@@ -108,7 +108,7 @@ export async function resolveShortCode(
 ): Promise<{ id: string; name: string } | null> {
   const db = getTenantDb(tenantId);
 
-  const event = await db.findOne('events', { short_code });
+  const event = await db.findOne('events', { short_code: shortCode });
 
   if (!event) {
     return null;
