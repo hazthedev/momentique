@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -22,10 +22,136 @@ import {
   Check,
   AlertCircle,
   Heart,
+  Download,
+  User,
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { IEvent, IPhoto } from '@/lib/types';
 import { getClientFingerprint } from '@/lib/fingerprint';
+
+// ============================================
+// TYPES
+// ============================================
+
+interface SelectedFile {
+  file: File;
+  preview: string;
+  name: string;
+}
+
+// ============================================
+// GUEST NAME MODAL COMPONENT
+// ============================================
+
+function GuestNameModal({
+  isOpen,
+  onSubmit,
+  eventName,
+}: {
+  isOpen: boolean;
+  onSubmit: (name: string, isAnonymous: boolean) => void;
+  eventName: string;
+}) {
+  const [name, setName] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = () => {
+    if (!isAnonymous && !name.trim()) {
+      setError('Please enter your name or choose anonymous');
+      return;
+    }
+    onSubmit(isAnonymous ? '' : name.trim(), isAnonymous);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800 animate-in fade-in zoom-in duration-200">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-pink-500">
+            <User className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            Welcome to {eventName}!
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Please enter your name to get started
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Your Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError('');
+              }}
+              placeholder="John Doe"
+              disabled={isAnonymous}
+              className={clsx(
+                "w-full rounded-lg border px-4 py-3 text-sm focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-gray-100",
+                isAnonymous
+                  ? "border-gray-200 bg-gray-100 text-gray-400 dark:border-gray-600"
+                  : "border-gray-300 bg-white dark:border-gray-600"
+              )}
+              maxLength={100}
+            />
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer rounded-lg border border-gray-200 p-3 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
+            <input
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(e) => {
+                setIsAnonymous(e.target.checked);
+                setError('');
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Stay Anonymous
+              </span>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Your name won't be shown on photos
+              </p>
+            </div>
+          </label>
+
+          {isAnonymous && (
+            <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                ⚠️ Anonymous users cannot participate in the lucky draw
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            className="w-full rounded-lg bg-gradient-to-r from-violet-600 to-pink-600 py-3 text-sm font-semibold text-white hover:from-violet-700 hover:to-pink-700 transition-all"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export default function GuestEventPage() {
   const params = useParams();
@@ -43,16 +169,61 @@ export default function GuestEventPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [participantName, setParticipantName] = useState('');
   const [joinLuckyDraw, setJoinLuckyDraw] = useState(true);
   const [hasJoinedDraw, setHasJoinedDraw] = useState(false);
   const fingerprint = useMemo(() => getClientFingerprint(), []);
+
+  // Guest name state (persisted)
+  const [guestName, setGuestName] = useState<string>('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+
+  // Selected files for upload (preview before submit)
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [caption, setCaption] = useState('');
 
   // Track user's love reactions (max 10 per photo per user)
   const [userLoves, setUserLoves] = useState<Record<string, number>>({});
 
   // Track which photos are currently showing the heart animation
   const [animatingPhotos, setAnimatingPhotos] = useState<Set<string>>(new Set());
+
+  // Load guest name from localStorage on mount
+  useEffect(() => {
+    if (!resolvedEventId) return;
+    const storageKey = `guest_name_${resolvedEventId}`;
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setGuestName(parsed.name || '');
+        setIsAnonymous(parsed.isAnonymous || false);
+      } catch {
+        // Show modal if no valid data
+        setShowGuestModal(true);
+      }
+    } else {
+      setShowGuestModal(true);
+    }
+  }, [resolvedEventId]);
+
+  // Handle guest modal submit
+  const handleGuestModalSubmit = (name: string, anonymous: boolean) => {
+    setGuestName(name);
+    setIsAnonymous(anonymous);
+    setShowGuestModal(false);
+
+    // If anonymous, can't join lucky draw
+    if (anonymous) {
+      setJoinLuckyDraw(false);
+    }
+
+    // Save to localStorage
+    if (resolvedEventId) {
+      const storageKey = `guest_name_${resolvedEventId}`;
+      localStorage.setItem(storageKey, JSON.stringify({ name, isAnonymous: anonymous }));
+    }
+  };
 
   // Load user's love reactions from localStorage
   useEffect(() => {
@@ -142,6 +313,24 @@ export default function GuestEventPage() {
     }
   };
 
+  // Download photo
+  const handleDownloadPhoto = async (photo: IPhoto) => {
+    try {
+      const response = await fetch(photo.images.full_url || photo.images.original_url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `photo-${photo.id}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('[GUEST_EVENT] Download error:', err);
+    }
+  };
+
   // Check if input looks like a UUID (8-4-4-4-12 format)
   const isUUID = (str: string): boolean => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -209,6 +398,7 @@ export default function GuestEventPage() {
     const code = event.short_code || event.id;
     return `${window.location.origin}/e/${code}`;
   }, [event]);
+
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -231,10 +421,39 @@ export default function GuestEventPage() {
     setShowShareModal(false);
   };
 
-  // Quick camera capture (immediate upload)
-  const handleQuickCameraCapture = async (files: FileList | null) => {
+  // Handle file selection (preview, don't upload yet)
+  const handleFileSelect = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    if (!participantName.trim()) {
+
+    const newFiles: SelectedFile[] = [];
+    for (let i = 0; i < Math.min(files.length, 5 - selectedFiles.length); i++) {
+      const file = files[i];
+      newFiles.push({
+        file,
+        preview: URL.createObjectURL(file),
+        name: file.name,
+      });
+    }
+    setSelectedFiles(prev => [...prev, ...newFiles]);
+  };
+
+  // Remove selected file
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => {
+      const newFiles = [...prev];
+      URL.revokeObjectURL(newFiles[index].preview);
+      newFiles.splice(index, 1);
+      return newFiles;
+    });
+  };
+
+  // Handle actual upload
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) {
+      setUploadError('Please select at least one photo');
+      return;
+    }
+    if (!guestName.trim() && !isAnonymous) {
       setUploadError('Please enter your name first');
       return;
     }
@@ -244,12 +463,15 @@ export default function GuestEventPage() {
 
     try {
       const formData = new FormData();
-      for (let i = 0; i < Math.min(files.length, 5); i++) {
-        formData.append('files', files[i]);
+      for (const selectedFile of selectedFiles) {
+        formData.append('files', selectedFile.file);
       }
-      formData.append('contributor_name', participantName.trim());
-      formData.append('is_anonymous', 'false');
-      if (joinLuckyDraw) {
+      formData.append('contributor_name', guestName.trim());
+      formData.append('is_anonymous', isAnonymous ? 'true' : 'false');
+      if (caption.trim()) {
+        formData.append('caption', caption.trim());
+      }
+      if (joinLuckyDraw && !isAnonymous) {
         formData.append('join_lucky_draw', 'true');
       }
 
@@ -272,17 +494,21 @@ export default function GuestEventPage() {
       setPhotos((prev) => [...uploadedPhotos, ...prev]);
 
       // If successfully joined the draw, mark as joined
-      if (joinLuckyDraw) {
+      if (joinLuckyDraw && !isAnonymous) {
         setHasJoinedDraw(true);
       }
 
       // Show success and reset
       setUploadSuccess(true);
+
+      // Clean up previews
+      selectedFiles.forEach(f => URL.revokeObjectURL(f.preview));
+
       setTimeout(() => {
         setUploadSuccess(false);
         setShowUploadModal(false);
-        setParticipantName('');
-        setJoinLuckyDraw(true);
+        setSelectedFiles([]);
+        setCaption('');
       }, 1500);
     } catch (err) {
       console.error('[GUEST_EVENT] Upload error:', err);
@@ -291,6 +517,16 @@ export default function GuestEventPage() {
       setIsUploading(false);
     }
   };
+
+  // Cleanup previews on unmount
+  useEffect(() => {
+    return () => {
+      selectedFiles.forEach(f => URL.revokeObjectURL(f.preview));
+    };
+  }, []);
+
+  // Get background color from theme
+  const backgroundColor = event?.settings?.theme?.background || '#f9fafb';
 
   // Loading state
   if (isLoading) {
@@ -331,8 +567,20 @@ export default function GuestEventPage() {
     day: 'numeric',
   });
 
+  const canDownload = event.settings?.features?.guest_download_enabled !== false;
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor }}
+    >
+      {/* Guest Name Modal */}
+      <GuestNameModal
+        isOpen={showGuestModal}
+        onSubmit={handleGuestModalSubmit}
+        eventName={event.name}
+      />
+
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/80">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
@@ -347,13 +595,20 @@ export default function GuestEventPage() {
                 </p>
               )}
             </div>
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-pink-600 px-4 py-2 text-sm font-medium text-white hover:from-violet-700 hover:to-pink-700"
-            >
-              <Share2 className="h-4 w-4" />
-              Share
-            </button>
+            <div className="flex items-center gap-2">
+              {guestName && (
+                <span className="hidden sm:block text-sm text-gray-600 dark:text-gray-400">
+                  Hi, {isAnonymous ? 'Anonymous' : guestName}!
+                </span>
+              )}
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-pink-600 px-4 py-2 text-sm font-medium text-white hover:from-violet-700 hover:to-pink-700"
+              >
+                <Share2 className="h-4 w-4" />
+                Share
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -455,6 +710,20 @@ export default function GuestEventPage() {
                       className="object-cover"
                     />
 
+                    {/* Download button */}
+                    {canDownload && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadPhoto(photo);
+                        }}
+                        className="absolute top-2 left-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                        title="Download photo"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    )}
+
                     {/* Love Icon at Top Right (when user has loved) */}
                     {userLoveCount > 0 && (
                       <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-pink-500 px-2 py-1 shadow-lg">
@@ -551,7 +820,7 @@ export default function GuestEventPage() {
       {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-800">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Upload Photo
@@ -559,11 +828,13 @@ export default function GuestEventPage() {
               <button
                 onClick={() => {
                   setShowUploadModal(false);
-                  setParticipantName('');
+                  setSelectedFiles([]);
                   setUploadError(null);
                   setUploadSuccess(false);
+                  setCaption('');
                 }}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                disabled={isUploading}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -584,87 +855,144 @@ export default function GuestEventPage() {
               </div>
             )}
 
-            {!uploadSuccess && (
+            {/* Uploading State */}
+            {isUploading && (
+              <div className="mb-4 flex flex-col items-center gap-3 rounded-lg bg-violet-50 p-6 dark:bg-violet-900/20">
+                <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
+                <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+                  Uploading photos...
+                </p>
+              </div>
+            )}
+
+            {!uploadSuccess && !isUploading && (
               <div className="space-y-4">
-                {/* Quick Camera/Gallery Buttons */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Camera Button */}
-                  <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-pink-50 p-4 transition-all hover:border-violet-400 hover:from-violet-100 hover:to-pink-100 dark:from-violet-900/20 dark:to-pink-900/20">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={(e) => handleQuickCameraCapture(e.target.files)}
-                      className="hidden"
-                      disabled={isUploading}
-                    />
-                    <Camera className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                      Camera
-                    </span>
-                  </label>
+                {/* Selected Files Preview */}
+                {selectedFiles.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Selected Photos ({selectedFiles.length}/5)
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                          <Image
+                            src={file.preview}
+                            alt={file.name}
+                            fill
+                            className="object-cover"
+                          />
+                          <button
+                            onClick={() => removeSelectedFile(index)}
+                            className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                  {/* Gallery Button */}
-                  <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 transition-all hover:border-gray-400 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-gray-500 dark:hover:bg-gray-700">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => handleQuickCameraCapture(e.target.files)}
-                      className="hidden"
-                      disabled={isUploading}
-                    />
-                    <ImageIcon className="h-8 w-8 text-gray-600 dark:text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                      Gallery
-                    </span>
-                  </label>
-                </div>
+                {/* File Selection Buttons */}
+                {selectedFiles.length < 5 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Camera Button */}
+                    <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-pink-50 p-4 transition-all hover:border-violet-400 hover:from-violet-100 hover:to-pink-100 dark:from-violet-900/20 dark:to-pink-900/20">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => handleFileSelect(e.target.files)}
+                        className="hidden"
+                      />
+                      <Camera className="h-8 w-8 text-violet-600 dark:text-violet-400" />
+                      <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                        Camera
+                      </span>
+                    </label>
 
-                {/* Participant Name */}
+                    {/* Gallery Button */}
+                    <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 transition-all hover:border-gray-400 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-gray-500 dark:hover:bg-gray-700">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleFileSelect(e.target.files)}
+                        className="hidden"
+                      />
+                      <ImageIcon className="h-8 w-8 text-gray-600 dark:text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                        Gallery
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Caption */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Your Name <span className="text-red-500">*</span>
+                    Caption (optional)
                   </label>
                   <input
                     type="text"
-                    value={participantName}
-                    onChange={(e) => setParticipantName(e.target.value)}
-                    placeholder="John Doe"
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Add a caption..."
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-violet-500 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                    disabled={isUploading}
-                    maxLength={100}
+                    maxLength={200}
                   />
                 </div>
 
                 {/* Lucky Draw Entry */}
-                <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 dark:border-violet-800 dark:bg-violet-900/20">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={joinLuckyDraw}
-                      onChange={(e) => setJoinLuckyDraw(e.target.checked)}
-                      disabled={isUploading || hasJoinedDraw}
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Trophy className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          Join Lucky Draw
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                        Enter this photo into the lucky draw for a chance to win prizes! Only your first entry counts.
-                      </p>
-                      {hasJoinedDraw && (
-                        <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                          ✓ You have already joined the lucky draw
+                {!isAnonymous && (
+                  <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 dark:border-violet-800 dark:bg-violet-900/20">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={joinLuckyDraw}
+                        onChange={(e) => setJoinLuckyDraw(e.target.checked)}
+                        disabled={hasJoinedDraw}
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            Join Lucky Draw
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                          Enter this photo into the lucky draw for a chance to win prizes!
                         </p>
-                      )}
-                    </div>
-                  </label>
-                </div>
+                        {hasJoinedDraw && (
+                          <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                            ✓ You have already joined the lucky draw
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {isAnonymous && (
+                  <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+                    <p className="text-xs text-amber-800 dark:text-amber-300">
+                      ⚠️ Anonymous users cannot participate in the lucky draw
+                    </p>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                {selectedFiles.length > 0 && (
+                  <button
+                    onClick={handleUpload}
+                    disabled={isUploading}
+                    className="w-full rounded-lg bg-gradient-to-r from-violet-600 to-pink-600 py-3 text-sm font-semibold text-white hover:from-violet-700 hover:to-pink-700 transition-all disabled:opacity-50"
+                  >
+                    Upload {selectedFiles.length} Photo{selectedFiles.length > 1 ? 's' : ''}
+                  </button>
+                )}
 
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                   Up to 5 photos, max 10MB each

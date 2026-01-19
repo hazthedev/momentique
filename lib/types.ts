@@ -120,6 +120,7 @@ export interface IEventFeatures {
   reactions_enabled: boolean;
   moderation_required: boolean;
   anonymous_allowed: boolean;
+  guest_download_enabled: boolean;
 }
 
 export interface IEventLimits {
