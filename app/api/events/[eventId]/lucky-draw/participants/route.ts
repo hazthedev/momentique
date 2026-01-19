@@ -80,6 +80,10 @@ export async function GET(
       if (b.entryCount !== a.entryCount) {
         return b.entryCount - a.entryCount;
       }
+      // Handle null dates
+      if (!a.firstEntryAt && !b.firstEntryAt) return 0;
+      if (!a.firstEntryAt) return 1;
+      if (!b.firstEntryAt) return -1;
       return new Date(a.firstEntryAt).getTime() - new Date(b.firstEntryAt).getTime();
     });
 
