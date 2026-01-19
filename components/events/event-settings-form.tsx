@@ -100,8 +100,8 @@ function generateSecondaryColor(primary: string): string {
 
 function generateBackgroundColor(primary: string): string {
     const { h, s } = hexToHSL(primary);
-    // Very light, slightly tinted version
-    return hslToHex(h, Math.min(s, 20), 97);
+    // Pastel with visible color - similar to #c995fe
+    return hslToHex(h, Math.max(s * 0.7, 60), 80);
 }
 
 // ============================================
@@ -109,12 +109,12 @@ function generateBackgroundColor(primary: string): string {
 // ============================================
 
 const presetThemes = [
-    { name: 'Violet Dream', primary: '#7c3aed', secondary: '#ec4899', background: '#faf5ff' },
-    { name: 'Ocean Blue', primary: '#0ea5e9', secondary: '#06b6d4', background: '#f0f9ff' },
-    { name: 'Forest Green', primary: '#22c55e', secondary: '#84cc16', background: '#f0fdf4' },
-    { name: 'Sunset Orange', primary: '#f97316', secondary: '#eab308', background: '#fffbeb' },
-    { name: 'Rose Gold', primary: '#f43f5e', secondary: '#fb7185', background: '#fff1f2' },
-    { name: 'Midnight', primary: '#6366f1', secondary: '#8b5cf6', background: '#eef2ff' },
+    { name: 'Violet Dream', primary: '#7c3aed', secondary: '#ec4899', background: '#c9a5f7' },
+    { name: 'Ocean Blue', primary: '#0ea5e9', secondary: '#06b6d4', background: '#7dd3fc' },
+    { name: 'Forest Green', primary: '#22c55e', secondary: '#84cc16', background: '#86efac' },
+    { name: 'Sunset Orange', primary: '#f97316', secondary: '#eab308', background: '#fdba74' },
+    { name: 'Rose Gold', primary: '#f43f5e', secondary: '#fb7185', background: '#fda4af' },
+    { name: 'Midnight', primary: '#6366f1', secondary: '#8b5cf6', background: '#a5b4fc' },
 ];
 
 // ============================================
@@ -260,25 +260,31 @@ export function EventSettingsForm({
                 </div>
 
                 {/* Color Pickers */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-4">
                     {/* Primary Color */}
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Primary Color
                         </label>
-                        <div className="flex items-center gap-3">
-                            <input
-                                type="color"
-                                value={primaryColor}
-                                onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                                className="h-10 w-16 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600"
-                            />
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <input
+                                    type="color"
+                                    value={primaryColor}
+                                    onChange={(e) => handlePrimaryColorChange(e.target.value)}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div
+                                    className="h-10 w-10 rounded-lg border-2 border-gray-300 dark:border-gray-500 shadow-sm"
+                                    style={{ backgroundColor: primaryColor }}
+                                />
+                            </div>
                             <input
                                 type="text"
                                 value={primaryColor}
                                 onChange={(e) => handlePrimaryColorChange(e.target.value)}
                                 placeholder="#7c3aed"
-                                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                             />
                         </div>
                     </div>
@@ -287,46 +293,62 @@ export function EventSettingsForm({
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                             Secondary Color
-                            <span className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                            <span className="text-xs text-violet-500 flex items-center gap-1">
                                 <Sparkles className="h-3 w-3" />
-                                Auto-suggested
+                                Auto
                             </span>
                         </label>
-                        <div className="flex items-center gap-3">
-                            <input
-                                type="color"
-                                value={secondaryColor}
-                                onChange={(e) => setSecondaryColor(e.target.value)}
-                                className="h-10 w-16 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600"
-                            />
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <input
+                                    type="color"
+                                    value={secondaryColor}
+                                    onChange={(e) => setSecondaryColor(e.target.value)}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div
+                                    className="h-10 w-10 rounded-lg border-2 border-gray-300 dark:border-gray-500 shadow-sm"
+                                    style={{ backgroundColor: secondaryColor }}
+                                />
+                            </div>
                             <input
                                 type="text"
                                 value={secondaryColor}
                                 onChange={(e) => setSecondaryColor(e.target.value)}
                                 placeholder="#ec4899"
-                                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                             />
                         </div>
                     </div>
 
                     {/* Background Color */}
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                             Background Color
+                            <span className="text-xs text-violet-500 flex items-center gap-1">
+                                <Sparkles className="h-3 w-3" />
+                                Auto
+                            </span>
                         </label>
-                        <div className="flex items-center gap-3">
-                            <input
-                                type="color"
-                                value={backgroundColor}
-                                onChange={(e) => setBackgroundColor(e.target.value)}
-                                className="h-10 w-16 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600"
-                            />
+                        <div className="flex items-center gap-2 sm:ml-auto">
+                            <div className="relative">
+                                <input
+                                    type="color"
+                                    value={backgroundColor}
+                                    onChange={(e) => setBackgroundColor(e.target.value)}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div
+                                    className="h-10 w-10 rounded-lg border-2 border-gray-300 dark:border-gray-500 shadow-sm"
+                                    style={{ backgroundColor: backgroundColor }}
+                                />
+                            </div>
                             <input
                                 type="text"
                                 value={backgroundColor}
                                 onChange={(e) => setBackgroundColor(e.target.value)}
                                 placeholder="#f9fafb"
-                                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                             />
                         </div>
                     </div>
@@ -380,27 +402,19 @@ export function EventSettingsForm({
                                 </p>
                             </div>
                         </div>
-                        <div className="relative">
-                            <input
-                                type="checkbox"
-                                checked={guestDownloadEnabled}
-                                onChange={(e) => setGuestDownloadEnabled(e.target.checked)}
-                                className="sr-only"
-                            />
+                        <div
+                            onClick={() => setGuestDownloadEnabled(!guestDownloadEnabled)}
+                            className={clsx(
+                                'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                                guestDownloadEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                            )}
+                        >
                             <div
                                 className={clsx(
-                                    'h-6 w-11 rounded-full transition-colors',
-                                    guestDownloadEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform',
+                                    guestDownloadEnabled ? 'left-[22px]' : 'left-0.5'
                                 )}
-                            >
-                                <div
-                                    className={clsx(
-                                        'h-5 w-5 rounded-full bg-white shadow transform transition-transform',
-                                        guestDownloadEnabled ? 'translate-x-5' : 'translate-x-0.5',
-                                        'mt-0.5'
-                                    )}
-                                />
-                            </div>
+                            />
                         </div>
                     </label>
 
@@ -417,27 +431,19 @@ export function EventSettingsForm({
                                 </p>
                             </div>
                         </div>
-                        <div className="relative">
-                            <input
-                                type="checkbox"
-                                checked={moderationRequired}
-                                onChange={(e) => setModerationRequired(e.target.checked)}
-                                className="sr-onl"
-                            />
+                        <div
+                            onClick={() => setModerationRequired(!moderationRequired)}
+                            className={clsx(
+                                'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                                moderationRequired ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                            )}
+                        >
                             <div
                                 className={clsx(
-                                    'h-6 w-11 rounded-full transition-colors',
-                                    moderationRequired ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform',
+                                    moderationRequired ? 'left-[22px]' : 'left-0.5'
                                 )}
-                            >
-                                <div
-                                    className={clsx(
-                                        'h-5 w-5 rounded-full bg-white shadow transform transition-transform',
-                                        moderationRequired ? 'translate-x-5' : 'translate-x-0.5',
-                                        'mt-0.5'
-                                    )}
-                                />
-                            </div>
+                            />
                         </div>
                     </label>
 
@@ -454,27 +460,19 @@ export function EventSettingsForm({
                                 </p>
                             </div>
                         </div>
-                        <div className="relative">
-                            <input
-                                type="checkbox"
-                                checked={anonymousAllowed}
-                                onChange={(e) => setAnonymousAllowed(e.target.checked)}
-                                className="sr-only"
-                            />
+                        <div
+                            onClick={() => setAnonymousAllowed(!anonymousAllowed)}
+                            className={clsx(
+                                'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                                anonymousAllowed ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                            )}
+                        >
                             <div
                                 className={clsx(
-                                    'h-6 w-11 rounded-full transition-colors',
-                                    anonymousAllowed ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform',
+                                    anonymousAllowed ? 'left-[22px]' : 'left-0.5'
                                 )}
-                            >
-                                <div
-                                    className={clsx(
-                                        'h-5 w-5 rounded-full bg-white shadow transform transition-transform',
-                                        anonymousAllowed ? 'translate-x-5' : 'translate-x-0.5',
-                                        'mt-0.5'
-                                    )}
-                                />
-                            </div>
+                            />
                         </div>
                     </label>
                 </div>
