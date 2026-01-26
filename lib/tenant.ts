@@ -148,6 +148,17 @@ export async function getMasterTenant(): Promise<ITenant | null> {
       status: 'active',
     });
 
+    if (!tenant && process.env.AUTO_SEED_MASTER_TENANT === 'true') {
+      const seeded = await seedMasterTenant();
+      if (seeded) {
+        tenantCache.set(cacheKey, {
+          tenant: seeded,
+          expiresAt: Date.now() + CACHE_TTL,
+        });
+        return seeded;
+      }
+    }
+
     if (tenant) {
       tenantCache.set(cacheKey, {
         tenant,
@@ -493,6 +504,51 @@ export async function createTenant(input: ICreateTenantInput): Promise<ITenant> 
   clearTenantCache();
 
   return tenant;
+}
+
+// ============================================
+// MASTER TENANT AUTO-SEED
+// ============================================
+
+async function seedMasterTenant(): Promise<ITenant | null> {
+  try {
+    const db = getTenantDb('00000000-0000-0000-0000-000000000000');
+    const masterId = process.env.MASTER_TENANT_ID || '00000000-0000-0000-0000-000000000001';
+    const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Momentique';
+    const masterDomain = process.env.NEXT_PUBLIC_MASTER_DOMAIN || 'app.momentique.com';
+    const contactEmail = process.env.MASTER_TENANT_CONTACT_EMAIL || `admin@${masterDomain}`;
+
+    const existing = await db.findOne<ITenant>('tenants', { id: masterId });
+    if (existing) {
+      return existing;
+    }
+
+    const tenant = await db.insert<ITenant>('tenants', {
+      id: masterId,
+      tenant_type: 'master',
+      brand_name: appName,
+      company_name: appName,
+      contact_email: contactEmail,
+      is_custom_domain: false,
+      branding: {
+        primary_color: '#7c3aed',
+        secondary_color: '#ec4899',
+        accent_color: '#f59e0b',
+      },
+      subscription_tier: 'enterprise',
+      features_enabled: getDefaultFeatures('enterprise'),
+      limits: getDefaultLimits('enterprise'),
+      status: 'active',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    console.log('[Tenant] Seeded master tenant', { id: masterId, domain: masterDomain });
+    return tenant;
+  } catch (error) {
+    console.error('[Tenant] Failed to seed master tenant:', error);
+    return null;
+  }
 }
 
 /**
