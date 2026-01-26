@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/middleware/auth';
 import { getTenantDb } from '@/lib/db';
 
+const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
+
 export async function GET(request: NextRequest) {
     try {
         // Require supervisor role
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
             return auth;
         }
 
-        const db = getTenantDb(auth.user.tenant_id);
+        const db = getTenantDb(SYSTEM_TENANT_ID);
 
         // Get counts from database
         const [usersResult, eventsResult, photosResult, tenantsResult] = await Promise.all([
