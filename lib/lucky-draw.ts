@@ -585,13 +585,13 @@ export async function executeDraw(
 
   const photosResult = photoIds.length
     ? await db.query<{ id: string; contributorName: string | null; images: { full_url?: string } }>(
-        `
+      `
           SELECT id, contributor_name AS "contributorName", images
           FROM photos
           WHERE id = ANY($1)
         `,
-        [photoIds]
-      )
+      [photoIds]
+    )
     : { rows: [] as Array<{ id: string; contributorName: string | null; images: { full_url?: string } }> };
 
   const photoMap = new Map(photosResult.rows.map((photo) => [photo.id, photo]));
@@ -696,6 +696,191 @@ export async function cancelDraw(
     { status: 'cancelled', completed_at: new Date(), updated_at: new Date() },
     { id: configId }
   );
+}
+
+// ============================================
+// REDRAW FUNCTIONALITY
+// ============================================
+
+/**
+ * Redraw a single prize tier when a winner is unavailable.
+ * Marks the previous winner as replaced and selects a new winner from remaining eligible entries.
+ */
+export async function redrawPrizeTier(
+  tenantId: string,
+  params: {
+    eventId: string;
+    configId: string;
+    prizeTier: string;
+    previousWinnerId?: string;
+    reason?: string;
+    redrawBy: string;
+  }
+): Promise<{
+  newWinner: Winner;
+  previousWinner: Winner | null;
+}> {
+  const db = getTenantDb(tenantId);
+  const { eventId, configId, prizeTier, previousWinnerId, reason } = params;
+
+  // 1. Get configuration
+  const configResult = await db.query<LuckyDrawConfig>(`
+    SELECT ${luckyDrawConfigColumns}
+    FROM lucky_draw_configs
+    WHERE id = $1
+  `, [configId]);
+
+  const config = configResult.rows[0];
+  if (!config) {
+    throw new Error('Draw configuration not found');
+  }
+
+  // 2. Get prize tier info
+  const tierInfo = config.prizeTiers.find(t => t.tier === prizeTier);
+  if (!tierInfo) {
+    throw new Error(`Prize tier "${prizeTier}" not found in configuration`);
+  }
+
+  // 3. Mark previous winner as replaced (if provided)
+  let previousWinner: Winner | null = null;
+  if (previousWinnerId) {
+    const prevWinnerResult = await db.query<Winner>(`
+      SELECT ${winnerColumns}
+      FROM winners
+      WHERE id = $1
+    `, [previousWinnerId]);
+    previousWinner = prevWinnerResult.rows[0] || null;
+
+    if (previousWinner) {
+      // Mark the winner as replaced (not claimed, add note)
+      await db.query(`
+        UPDATE winners
+        SET is_claimed = false,
+            prize_description = COALESCE(prize_description, '') || ' [REPLACED: ' || $2 || ']',
+            notified_at = NOW()
+        WHERE id = $1
+      `, [previousWinnerId, reason || 'Winner unavailable']);
+
+      // Mark the entry as no longer a winner so it's not excluded
+      await db.update(
+        'lucky_draw_entries',
+        { is_winner: false, prize_tier: null },
+        { id: previousWinner.entryId }
+      );
+    }
+  }
+
+  // 4. Get all entries excluding existing winners
+  const existingWinnersResult = await db.query<{ userFingerprint: string }>(`
+    SELECT DISTINCT le.user_fingerprint AS "userFingerprint"
+    FROM winners w
+    JOIN lucky_draw_entries le ON le.id = w.entry_id
+    WHERE w.event_id = $1
+      AND w.prize_description NOT LIKE '%[REPLACED:%'
+  `, [eventId]);
+
+  const existingWinnerFingerprints = new Set(
+    existingWinnersResult.rows.map(r => r.userFingerprint)
+  );
+
+  // If previous winner was replaced, remove from exclusion list
+  if (previousWinner) {
+    const prevEntryResult = await db.query<{ userFingerprint: string }>(`
+      SELECT user_fingerprint AS "userFingerprint"
+      FROM lucky_draw_entries
+      WHERE id = $1
+    `, [previousWinner.entryId]);
+    if (prevEntryResult.rows[0]) {
+      existingWinnerFingerprints.delete(prevEntryResult.rows[0].userFingerprint);
+    }
+  }
+
+  // 5. Get eligible entries (not winners, not from existing winner fingerprints)
+  const eligibleEntriesResult = await db.query<LuckyDrawEntry>(`
+    SELECT ${luckyDrawEntryColumns}
+    FROM lucky_draw_entries
+    WHERE config_id = $1 AND is_winner = false
+    ORDER BY created_at ASC
+  `, [configId]);
+
+  const eligibleEntries = eligibleEntriesResult.rows.filter(
+    entry => !existingWinnerFingerprints.has(entry.userFingerprint)
+  );
+
+  if (eligibleEntries.length === 0) {
+    throw new Error('No eligible entries available for redraw');
+  }
+
+  // 6. Shuffle and select new winner
+  const shuffled = fisherYatesShuffle(eligibleEntries);
+  const selectedEntry = shuffled[0];
+
+  // 7. Get photo info for selfie URL
+  let selfieUrl = '';
+  let participantName = selectedEntry.participantName || 'Anonymous';
+
+  if (selectedEntry.photoId) {
+    const photoResult = await db.query<{ contributorName: string | null; images: { full_url?: string } }>(`
+      SELECT contributor_name AS "contributorName", images
+      FROM photos
+      WHERE id = $1
+    `, [selectedEntry.photoId]);
+
+    if (photoResult.rows[0]) {
+      selfieUrl = photoResult.rows[0].images?.full_url || '';
+      participantName = photoResult.rows[0].contributorName || participantName;
+    }
+  }
+
+  // 8. Mark entry as winner
+  await db.update(
+    'lucky_draw_entries',
+    { is_winner: true, prize_tier: prizeTier },
+    { id: selectedEntry.id }
+  );
+
+  // 9. Get next selection order
+  const maxOrderResult = await db.query<{ maxOrder: number }>(`
+    SELECT COALESCE(MAX(selection_order), 0) as "maxOrder"
+    FROM winners
+    WHERE event_id = $1
+  `, [eventId]);
+  const nextOrder = (maxOrderResult.rows[0]?.maxOrder || 0) + 1;
+
+  // 10. Create new winner record
+  const newWinner: Winner = {
+    id: generateUUID(),
+    eventId,
+    entryId: selectedEntry.id,
+    participantName,
+    selfieUrl,
+    prizeTier: tierInfo.tier,
+    prizeName: tierInfo.name,
+    prizeDescription: tierInfo.description || '' + (reason ? ` [REDRAW: ${reason}]` : ' [REDRAW]'),
+    selectionOrder: nextOrder,
+    isClaimed: false,
+    drawnAt: new Date(),
+    createdAt: new Date(),
+  };
+
+  await db.insert('winners', {
+    event_id: newWinner.eventId,
+    entry_id: newWinner.entryId,
+    participant_name: newWinner.participantName,
+    selfie_url: newWinner.selfieUrl,
+    prize_tier: newWinner.prizeTier,
+    prize_name: newWinner.prizeName,
+    prize_description: newWinner.prizeDescription,
+    selection_order: newWinner.selectionOrder,
+    is_claimed: false,
+    drawn_at: new Date(),
+    created_at: new Date(),
+  });
+
+  return {
+    newWinner,
+    previousWinner,
+  };
 }
 
 // ============================================
