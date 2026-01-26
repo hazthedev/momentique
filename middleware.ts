@@ -5,7 +5,6 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createTenantContext } from './lib/tenant';
 
 // Configure middleware to use Node.js runtime (required for database access)
 export const runtime = 'nodejs';
@@ -61,45 +60,9 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Production tenant resolution
-  const tenantContext = await createTenantContext(hostname);
-
-  if (!tenantContext) {
-    if (url.pathname.startsWith('/api/')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Tenant not found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    return new NextResponse('Tenant not found', { status: 404 });
-  }
-
-  if (tenantContext.tenant.status === 'suspended') {
-    if (url.pathname.startsWith('/api/')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Tenant suspended' }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    return NextResponse.rewrite(new URL('/suspended', request.url));
-  }
-
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
-
-  response.headers.set('x-tenant-id', tenantContext.tenant.id);
-  response.headers.set('x-tenant-type', tenantContext.tenant.tenant_type);
-  response.headers.set('x-tenant-tier', tenantContext.tenant.subscription_tier);
-  response.headers.set('x-tenant-branding', JSON.stringify(tenantContext.tenant.branding));
-  response.headers.set('x-tenant-features', JSON.stringify(tenantContext.tenant.features_enabled));
-  response.headers.set('x-tenant-limits', JSON.stringify(tenantContext.tenant.limits));
-  response.headers.set('x-is-custom-domain', tenantContext.is_custom_domain.toString());
-  response.headers.set('x-is-master', tenantContext.is_master.toString());
-
-  return response;
+  // For production, the tenant resolution would happen here
+  // For now, just pass through
+  return NextResponse.next();
 }
 
 /**

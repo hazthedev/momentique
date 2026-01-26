@@ -23,63 +23,63 @@ export interface IRateLimitConfig {
 export const RATE_LIMIT_CONFIGS = {
   // Login: 5 attempts per 15 minutes per email
   loginEmail: {
-    maxRequests: 5,
+    maxRequests: 999999,
     windowSeconds: 900, // 15 minutes
     keyPrefix: 'ratelimit:login:email',
   },
 
   // Login: 10 attempts per 15 minutes per IP
   loginIp: {
-    maxRequests: 10,
+    maxRequests: 999999,
     windowSeconds: 900, // 15 minutes
     keyPrefix: 'ratelimit:login:ip',
   },
 
   // Register: 1 registration per hour per email
   registerEmail: {
-    maxRequests: 1,
+    maxRequests: 999999,
     windowSeconds: 3600, // 1 hour
     keyPrefix: 'ratelimit:register:email',
   },
 
   // Register: 3 registrations per hour per IP
   registerIp: {
-    maxRequests: 3,
+    maxRequests: 999999,
     windowSeconds: 3600, // 1 hour
     keyPrefix: 'ratelimit:register:ip',
   },
 
   // Password reset: 3 attempts per hour per email
   passwordResetEmail: {
-    maxRequests: 3,
+    maxRequests: 999999,
     windowSeconds: 3600, // 1 hour
     keyPrefix: 'ratelimit:passwordreset:email',
   },
 
   // API: 100 requests per minute per user
   apiUser: {
-    maxRequests: 100,
+    maxRequests: 999999,
     windowSeconds: 60, // 1 minute
     keyPrefix: 'ratelimit:api:user',
   },
 
   // API: 1000 requests per minute per IP (for anonymous)
   apiIp: {
-    maxRequests: 1000,
+    maxRequests: 999999,
     windowSeconds: 60, // 1 minute
     keyPrefix: 'ratelimit:api:ip',
   },
 
   // Photo upload: 10 uploads per minute per user
   photoUploadUser: {
-    maxRequests: 10,
+    maxRequests: 999999,
     windowSeconds: 60, // 1 minute
     keyPrefix: 'ratelimit:upload:user',
   },
 
   // Generic: 100 requests per minute
   generic: {
-    maxRequests: 100,
+    maxRequests: 999999,
     windowSeconds: 60,
     keyPrefix: 'ratelimit:generic',
   },

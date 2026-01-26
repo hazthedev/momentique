@@ -251,23 +251,6 @@ export const photos = pgTable('photos', {
 }));
 
 // ============================================
-// PHOTO REACTIONS TABLE
-// ============================================
-
-export const photoReactions = pgTable('photo_reactions', {
-  id: text('id').primaryKey(),
-  photoId: uuid('photo_id').notNull().references(() => photos.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull(),
-  type: text('type').notNull().default('heart'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-}, (table) => ({
-  photoIdx: index('photo_reactions_photo_idx').on(table.photoId),
-  userIdx: index('photo_reactions_user_idx').on(table.userId),
-  typeIdx: index('photo_reactions_type_idx').on(table.type),
-  photoUserIdx: index('photo_reactions_photo_user_idx').on(table.photoId, table.userId),
-}));
-
-// ============================================
 // PHOTO MODERATION LOGS
 // ============================================
 
@@ -445,8 +428,6 @@ export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 export type Photo = typeof photos.$inferSelect;
 export type NewPhoto = typeof photos.$inferSelect;
-export type PhotoReaction = typeof photoReactions.$inferSelect;
-export type NewPhotoReaction = typeof photoReactions.$inferInsert;
 export type PhotoModerationLog = typeof photoModerationLogs.$inferSelect;
 export type NewPhotoModerationLog = typeof photoModerationLogs.$inferInsert;
 export type LuckyDrawConfig = typeof luckyDrawConfigs.$inferSelect;

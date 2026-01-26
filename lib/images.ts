@@ -7,7 +7,6 @@ import {
   S3Client,
   ListObjectsV2Command,
   DeleteObjectsCommand,
-  GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
@@ -136,106 +135,6 @@ export async function uploadImageToStorage(
     file_size: fullBuffer.length,
     format: 'jpg',
   };
-}
-
-/**
- * Upload image variants (full/medium/thumbnail) from a buffer.
- * Returns URLs and metadata for the generated variants.
- */
-export async function uploadImageVariantsFromBuffer(
-  eventId: string,
-  photoId: string,
-  imageBuffer: Buffer
-): Promise<Pick<IPhotoImage, 'thumbnail_url' | 'medium_url' | 'full_url' | 'width' | 'height' | 'file_size' | 'format'>> {
-  const client = getR2Client();
-  const path = `${eventId}/${photoId}`;
-
-  const image = sharp(imageBuffer);
-  const metadata = await image.metadata();
-  const originalWidth = metadata.width || MAX_DIMENSION;
-  const originalHeight = metadata.height || MAX_DIMENSION;
-
-  const fullScale = Math.min(MAX_DIMENSION / originalWidth, MAX_DIMENSION / originalHeight, 1);
-  const fullWidth = Math.round(originalWidth * fullScale);
-  const fullHeight = Math.round(originalHeight * fullScale);
-
-  const fullBuffer = await image
-    .clone()
-    .resize(fullWidth, fullHeight, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: JPEG_QUALITY })
-    .toBuffer();
-
-  const mediumScale = Math.min(MEDIUM_SIZE / originalWidth, MEDIUM_SIZE / originalHeight, 1);
-  const mediumWidth = Math.round(originalWidth * mediumScale);
-  const mediumHeight = Math.round(originalHeight * mediumScale);
-
-  const mediumBuffer = await image
-    .clone()
-    .resize(mediumWidth, mediumHeight, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: JPEG_QUALITY })
-    .toBuffer();
-
-  const thumbnailBuffer = await image
-    .clone()
-    .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: 'cover', position: 'center' })
-    .jpeg({ quality: JPEG_QUALITY })
-    .toBuffer();
-
-  await Promise.all([
-    client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: `${path}/full.jpg`,
-      Body: fullBuffer,
-      ContentType: 'image/jpeg',
-      CacheControl: 'public, max-age=31536000, immutable',
-    })),
-    client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: `${path}/medium.jpg`,
-      Body: mediumBuffer,
-      ContentType: 'image/jpeg',
-      CacheControl: 'public, max-age=31536000, immutable',
-    })),
-    client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: `${path}/thumbnail.jpg`,
-      Body: thumbnailBuffer,
-      ContentType: 'image/jpeg',
-      CacheControl: 'public, max-age=31536000, immutable',
-    })),
-  ]);
-
-  return {
-    thumbnail_url: `${R2_PUBLIC_URL}/${path}/thumbnail.jpg`,
-    medium_url: `${R2_PUBLIC_URL}/${path}/medium.jpg`,
-    full_url: `${R2_PUBLIC_URL}/${path}/full.jpg`,
-    width: fullWidth,
-    height: fullHeight,
-    file_size: fullBuffer.length,
-    format: 'jpg',
-  };
-}
-
-/**
- * Download an object from R2 and return as a Buffer
- */
-export async function downloadObjectToBuffer(key: string): Promise<Buffer> {
-  const client = getR2Client();
-  const result = await client.send(new GetObjectCommand({
-    Bucket: R2_BUCKET_NAME,
-    Key: key,
-  }));
-
-  if (!result.Body) {
-    throw new Error('Empty object body');
-  }
-
-  const stream = result.Body as NodeJS.ReadableStream;
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
 }
 
 // ============================================

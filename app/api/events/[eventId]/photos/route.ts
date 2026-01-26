@@ -210,7 +210,6 @@ export async function POST(
           height,
           file_size: fileSize,
           format: ext,
-          original_key: key,
         },
         caption: caption || undefined,
         contributor_name: contributorName || undefined,
@@ -232,23 +231,6 @@ export async function POST(
           await createEntryFromPhoto(tenantId, eventId, photo.id, userId, entryName);
         } catch (entryError) {
           console.warn('[API] Lucky draw entry skipped:', entryError);
-        }
-      }
-
-      // Kick off async image processing (best-effort)
-      const processSecret = process.env.PHOTO_PROCESS_SECRET;
-      const processUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/photos/${photoId}/process`;
-      if (processUrl.startsWith('http')) {
-        try {
-          fetch(processUrl, {
-            method: 'POST',
-            headers: {
-              ...(processSecret ? { 'x-photo-process-secret': processSecret } : {}),
-              'x-tenant-id': tenantId,
-            },
-          }).catch(() => undefined);
-        } catch {
-          // Best-effort only
         }
       }
 

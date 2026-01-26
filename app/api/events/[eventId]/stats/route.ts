@@ -7,6 +7,7 @@ import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
 import { verifyAccessToken } from '@/lib/auth';
 import { extractSessionId, validateSession } from '@/lib/session';
+import type { IPhoto } from '@/lib/types';
 
 interface EventStats {
   totalPhotos: number;
@@ -115,119 +116,80 @@ export async function GET(
       );
     }
 
-    const totalPhotosResult = await db.query<{ count: string }>(
-      `SELECT COUNT(*) as count FROM photos WHERE event_id = $1`,
-      [id]
-    );
-    const totalPhotos = parseInt(totalPhotosResult.rows[0]?.count || '0', 10);
+    // Get all photos for this event
+    const photos = await db.findMany<IPhoto>('photos', { event_id: id });
 
-    const participantsResult = await db.query<{ count: string }>(
-      `SELECT COUNT(DISTINCT user_fingerprint) as count FROM photos WHERE event_id = $1`,
-      [id]
-    );
-    const totalParticipants = parseInt(participantsResult.rows[0]?.count || '0', 10);
+    // Calculate stats
+    const totalPhotos = photos.length;
 
-    const photosTodayResult = await db.query<{ count: string }>(
-      `SELECT COUNT(*) as count FROM photos WHERE event_id = $1 AND created_at >= DATE_TRUNC('day', NOW())`,
-      [id]
-    );
-    const photosToday = parseInt(photosTodayResult.rows[0]?.count || '0', 10);
+    // Count unique participants (by user_fingerprint)
+    const uniqueFingerprints = new Set(photos.map(p => p.user_fingerprint));
+    const totalParticipants = uniqueFingerprints.size;
 
+    // Count photos today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const photosToday = photos.filter(p => {
+      const photoDate = new Date(p.created_at);
+      return photoDate >= today;
+    }).length;
+
+    // Calculate average photos per user
     const avgPhotosPerUser = totalParticipants > 0
       ? Math.round((totalPhotos / totalParticipants) * 10) / 10
       : 0;
 
-    const topContributorsResult = await db.query<{ name: string; count: string }>(
-      `
-        SELECT
-          CASE WHEN is_anonymous THEN 'Anonymous' ELSE COALESCE(NULLIF(contributor_name, ''), 'Guest') END as name,
-          COUNT(*) as count
-        FROM photos
-        WHERE event_id = $1
-        GROUP BY name
-        ORDER BY count DESC
-        LIMIT 10
-      `,
-      [id]
-    );
-    const topContributors = topContributorsResult.rows.map((row) => ({
-      name: row.name,
-      count: parseInt(row.count, 10),
-    }));
+    // Get top contributors
+    const contributorMap = new Map<string, number>();
+    for (const photo of photos) {
+      const name = photo.is_anonymous ? 'Anonymous' : (photo.contributor_name || 'Guest');
+      contributorMap.set(name, (contributorMap.get(name) || 0) + 1);
+    }
 
-    const uploadTimelineResult = await db.query<{ date: string; count: string }>(
-      `
-        SELECT TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD') as date,
-               COUNT(*) as count
-        FROM photos
-        WHERE event_id = $1
-          AND created_at >= (NOW() - INTERVAL '6 days')
-        GROUP BY DATE_TRUNC('day', created_at)
-        ORDER BY date ASC
-      `,
-      [id]
-    );
+    const topContributors = Array.from(contributorMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
 
-    const timelineMap = new Map(uploadTimelineResult.rows.map((row) => [row.date, parseInt(row.count, 10)]));
+    // Calculate upload timeline (last 7 days)
     const uploadTimeline: { date: string; count: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
       const dateStr = date.toISOString().split('T')[0];
-      uploadTimeline.push({ date: dateStr, count: timelineMap.get(dateStr) || 0 });
+
+      const count = photos.filter(p => {
+        const photoDate = new Date(p.created_at);
+        const photoDateStr = photoDate.toISOString().split('T')[0];
+        return photoDateStr === dateStr;
+      }).length;
+
+      uploadTimeline.push({ date: dateStr, count });
     }
 
-    const totalReactionsResult = await db.query<{ total: string }>(
-      `
-        SELECT
-          COALESCE(SUM(
-            (COALESCE((reactions->>'heart')::int, 0)) +
-            (COALESCE((reactions->>'clap')::int, 0)) +
-            (COALESCE((reactions->>'laugh')::int, 0)) +
-            (COALESCE((reactions->>'wow')::int, 0))
-          ), 0) as total
-        FROM photos
-        WHERE event_id = $1
-      `,
-      [id]
-    );
-    const totalReactions = parseInt(totalReactionsResult.rows[0]?.total || '0', 10);
+    // Calculate total reactions
+    let totalReactions = 0;
+    for (const photo of photos) {
+      totalReactions += photo.reactions.heart || 0;
+      totalReactions += photo.reactions.clap || 0;
+      totalReactions += photo.reactions.laugh || 0;
+      totalReactions += photo.reactions.wow || 0;
+    }
 
-    const topLikedResult = await db.query<{
-      id: string;
-      imageUrl: string | null;
-      heartCount: number | null;
-      contributorName: string;
-      isAnonymous: boolean;
-    }>(
-      `
-        SELECT
-          id,
-          (images ->> 'thumbnail_url') as "imageUrl",
-          COALESCE((reactions->>'heart')::int, 0) as "heartCount",
-          CASE WHEN is_anonymous THEN 'Anonymous' ELSE COALESCE(NULLIF(contributor_name, ''), 'Guest') END as "contributorName",
-          is_anonymous as "isAnonymous"
-        FROM photos
-        WHERE event_id = $1
-        ORDER BY COALESCE((reactions->>'heart')::int, 0) DESC
-        LIMIT 3
-      `,
-      [id]
-    );
-    const topLikedPhotos = topLikedResult.rows.map((row) => ({
-      id: row.id,
-      imageUrl: row.imageUrl || '',
-      heartCount: row.heartCount || 0,
-      contributorName: row.contributorName,
-      isAnonymous: row.isAnonymous,
-    }));
+    const topLikedPhotos = photos
+      .map((photo) => ({
+        id: photo.id,
+        imageUrl: photo.images?.thumbnail_url || photo.images?.medium_url || photo.images?.full_url || photo.images?.original_url || '',
+        heartCount: photo.reactions?.heart || 0,
+        contributorName: photo.is_anonymous ? 'Anonymous' : (photo.contributor_name || 'Guest'),
+        isAnonymous: photo.is_anonymous,
+      }))
+      .sort((a, b) => b.heartCount - a.heartCount)
+      .slice(0, 3);
 
-    const pendingModerationResult = await db.query<{ count: string }>(
-      `SELECT COUNT(*) as count FROM photos WHERE event_id = $1 AND status = 'pending'`,
-      [id]
-    );
-    const pendingModeration = parseInt(pendingModerationResult.rows[0]?.count || '0', 10);
+    // Count pending moderation
+    const pendingModeration = photos.filter(p => p.status === 'pending').length;
 
     const stats: EventStats = {
       totalPhotos,

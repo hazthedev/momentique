@@ -211,7 +211,7 @@ Blockers: None
 
 Dependencies:
 - [x] Redis (for WebSocket scaling)
-- [x] Realtime setup (Supabase)
+- [x] Socket.io setup
 - [ ] Production infrastructure
 
 Note: Currently using 30s polling for some stats. WebSockets improve UX but add complexity.

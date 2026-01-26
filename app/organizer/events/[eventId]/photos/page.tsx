@@ -43,7 +43,6 @@ export default function EventPhotosPage() {
     photoStatus: string | null;
     imageUrl: string | null;
   }>>([]);
-  const fetchLogsRef = useRef<(() => Promise<void>) | null>(null);
   const [activeStatus, setActiveStatus] = useState<PhotoStatus>(
     (searchParams.get('status') as PhotoStatus) || 'all'
   );
@@ -123,7 +122,6 @@ export default function EventPhotosPage() {
       }
     };
 
-    fetchLogsRef.current = fetchLogs;
     fetchLogs();
   }, [eventId]);
 
@@ -134,13 +132,11 @@ export default function EventPhotosPage() {
 
     // Immediately refetch to ensure we have the latest data
     fetchPhotosRef.current?.();
-    fetchLogsRef.current?.();
   }, []);
 
   const handlePhotoDelete = useCallback(async (photoId: string) => {
     setPhotos((prev) => prev.filter((p) => p.id !== photoId));
     fetchPhotosRef.current?.();
-    fetchLogsRef.current?.();
   }, []);
 
   const handleStatusChange = (status: PhotoStatus) => {
