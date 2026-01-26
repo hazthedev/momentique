@@ -39,14 +39,17 @@ async function getTenantOr404(db: ReturnType<typeof getTenantDb>, tenantId: stri
   return tenant;
 }
 
-export async function GET(request: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { tenantId: string } }
+) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth instanceof NextResponse) {
       return auth;
     }
 
-    const tenantId = params.tenantId;
+    const { tenantId } = params;
     const db = getTenantDb(SYSTEM_TENANT_ID);
     const tenant = await getTenantOr404(db, tenantId);
     if (tenant instanceof NextResponse) {
@@ -63,14 +66,17 @@ export async function GET(request: NextRequest, { params }: { params: { tenantId
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { tenantId: string } }
+) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth instanceof NextResponse) {
       return auth;
     }
 
-    const tenantId = params.tenantId;
+    const { tenantId } = params;
     const db = getTenantDb(SYSTEM_TENANT_ID);
     const existing = await getTenantOr404(db, tenantId);
     if (existing instanceof NextResponse) {
@@ -143,14 +149,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { tenant
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { tenantId: string } }
+) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth instanceof NextResponse) {
       return auth;
     }
 
-    const tenantId = params.tenantId;
+    const { tenantId } = params;
     const db = getTenantDb(SYSTEM_TENANT_ID);
     const tenant = await getTenantOr404(db, tenantId);
     if (tenant instanceof NextResponse) {
