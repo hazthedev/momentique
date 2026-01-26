@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
     const eventUrl = generateEventUrl(baseUrl, eventId, slug);
 
     // Default settings
-    let defaultSettings = {
+    let defaultSettings: IEvent['settings'] = {
       theme: {
         primary_color: '#8B5CF6',
         secondary_color: '#EC4899',
