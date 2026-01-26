@@ -105,6 +105,11 @@ export default function EventPhotosPage() {
     fetchPhotosRef.current?.();
   }, []);
 
+  const handlePhotoDelete = useCallback(async (photoId: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+    fetchPhotosRef.current?.();
+  }, []);
+
   const handleStatusChange = (status: PhotoStatus) => {
     setActiveStatus(status);
     // Update URL without reloading
@@ -216,6 +221,7 @@ export default function EventPhotosPage() {
             onReaction={handleReaction}
             onPhotoUpdate={handlePhotoUpdate}
             allowDownload
+            onPhotoDelete={handlePhotoDelete}
           />
         )}
 

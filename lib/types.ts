@@ -705,3 +705,16 @@ export interface IModerationAction {
   reason?: string;
   ban_user?: boolean;
 }
+
+export type ModerationActionType = 'approve' | 'reject' | 'delete';
+
+export interface IPhotoModerationLog {
+  id: string;
+  photo_id: string;
+  event_id: string;
+  tenant_id: string;
+  moderator_id: string;
+  action: ModerationActionType;
+  reason?: string;
+  created_at: Date;
+}

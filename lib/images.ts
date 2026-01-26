@@ -206,6 +206,37 @@ export async function deleteEventPhotos(eventId: string): Promise<void> {
 }
 
 /**
+ * Delete all photo assets for a specific photo
+ */
+export async function deletePhotoAssets(eventId: string, photoId: string): Promise<void> {
+  const client = getR2Client();
+  const prefix = `${eventId}/${photoId}/`;
+
+  try {
+    const listed = await client.send(new ListObjectsV2Command({
+      Bucket: R2_BUCKET_NAME,
+      Prefix: prefix,
+    }));
+
+    if (listed.Contents && listed.Contents.length > 0) {
+      const objects = listed.Contents.map((obj) => ({ Key: obj.Key || '' }));
+
+      await client.send(new DeleteObjectsCommand({
+        Bucket: R2_BUCKET_NAME,
+        Delete: {
+          Objects: objects,
+        },
+      }));
+    }
+
+    console.log(`[Storage] Deleted ${listed.Contents?.length || 0} objects for photo ${photoId}`);
+  } catch (error) {
+    console.error(`[Storage] Error deleting photo assets for ${photoId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Generate signed URL for private access
  */
 export function generateSignedUrl(key: string, _expiresIn: number = 3600): string {

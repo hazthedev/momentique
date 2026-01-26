@@ -20,6 +20,7 @@ interface PhotoGalleryProps {
   onReaction?: (photoId: string, emoji: string) => void;
   onPhotoUpdate?: (photoId: string, status: 'approved' | 'rejected') => void;
   allowDownload?: boolean;
+  onPhotoDelete?: (photoId: string) => void;
 }
 
 // ============================================
@@ -32,6 +33,7 @@ export function PhotoGallery({
   onReaction,
   onPhotoUpdate,
   allowDownload = false,
+  onPhotoDelete,
 }: PhotoGalleryProps) {
   // State
   const [photos, setPhotos] = useState<IPhoto[]>(initialPhotos);
@@ -177,6 +179,27 @@ export function PhotoGallery({
     }
   }, []);
 
+  const handleDelete = useCallback(async (photo: IPhoto) => {
+    const confirmed = window.confirm('Delete this photo? This cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/photos/${photo.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to delete photo');
+      }
+
+      onPhotoDelete?.(photo.id);
+    } catch (error) {
+      console.error('[Gallery] Delete failed:', error);
+    }
+  }, [onPhotoDelete]);
+
   // ============================================
   // RENDER
   // ============================================
@@ -275,6 +298,20 @@ export function PhotoGallery({
                         className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
                       >
                         ✕ Reject
+                      </button>
+                    </div>
+                  )}
+
+                  {isModerator && (
+                    <div className="mt-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(photo);
+                        }}
+                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                      >
+                        Delete
                       </button>
                     </div>
                   )}

@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
-import { requireAuthForApi, hasModeratorRole, verifyPhotoModerationAccess } from '@/lib/auth';
+import { requireAuthForApi, verifyPhotoModerationAccess } from '@/lib/auth';
 
 // ============================================
 // PATCH /api/photos/:id/approve - Approve photo
@@ -47,12 +47,25 @@ export async function PATCH(
 
     const db = getTenantDb(authTenantId);
 
+    const body = await request.json().catch(() => ({}));
+    const reason = typeof body?.reason === 'string' ? body.reason.trim() : null;
+
     // Update photo status
     await db.update(
       'photos',
       { status: 'approved', approved_at: new Date() },
       { id: photoId }
     );
+
+    await db.insert('photo_moderation_logs', {
+      photo_id: photoId,
+      event_id: photo.event_id,
+      tenant_id: authTenantId,
+      moderator_id: userId,
+      action: 'approve',
+      reason,
+      created_at: new Date(),
+    });
 
     return NextResponse.json({
       data: { id: photoId, status: 'approved' },

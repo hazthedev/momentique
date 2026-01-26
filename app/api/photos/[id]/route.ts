@@ -1,17 +1,18 @@
 // ============================================
-// MOMENTIQUE - Photo Rejection API Route
+// MOMENTIQUE - Photo Delete API Route
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
 import { requireAuthForApi, verifyPhotoModerationAccess } from '@/lib/auth';
+import { deletePhotoAssets } from '@/lib/images';
 
 // ============================================
-// PATCH /api/photos/:id/reject - Reject photo
+// DELETE /api/photos/:id - Delete photo
 // ============================================
 
-export async function PATCH(
+export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -46,35 +47,49 @@ export async function PATCH(
     }
 
     const db = getTenantDb(authTenantId);
+    const existingPhoto = await db.findOne<{
+      id: string;
+      event_id: string;
+    }>('photos', { id: photoId });
 
+    if (!existingPhoto) {
+      return NextResponse.json(
+        { error: 'Photo not found', code: 'PHOTO_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    // Best-effort delete in storage
+    try {
+      await deletePhotoAssets(existingPhoto.event_id, existingPhoto.id);
+    } catch {
+      // Storage failures should not block moderation action
+    }
+
+    // Delete photo record
+    await db.delete('photos', { id: photoId });
+
+    // Audit log
     const body = await request.json().catch(() => ({}));
     const reason = typeof body?.reason === 'string' ? body.reason.trim() : null;
 
-    // Update photo status
-    await db.update(
-      'photos',
-      { status: 'rejected' },
-      { id: photoId }
-    );
-
     await db.insert('photo_moderation_logs', {
       photo_id: photoId,
-      event_id: photo.event_id,
+      event_id: existingPhoto.event_id,
       tenant_id: authTenantId,
       moderator_id: userId,
-      action: 'reject',
+      action: 'delete',
       reason,
       created_at: new Date(),
     });
 
     return NextResponse.json({
-      data: { id: photoId, status: 'rejected' },
-      message: 'Photo rejected successfully',
+      data: { id: photoId, status: 'deleted' },
+      message: 'Photo deleted successfully',
     });
   } catch (error) {
-    console.error('[API] Reject error:', error);
+    console.error('[API] Delete photo error:', error);
 
-    // Handle different error types
     if (error instanceof Error) {
       const errorMessage = error.message;
 
@@ -101,8 +116,9 @@ export async function PATCH(
     }
 
     return NextResponse.json(
-      { error: 'Failed to reject photo', code: 'REJECT_ERROR' },
+      { error: 'Failed to delete photo', code: 'DELETE_ERROR' },
       { status: 500 }
     );
   }
 }
+

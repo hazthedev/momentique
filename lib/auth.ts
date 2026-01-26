@@ -570,7 +570,7 @@ export async function verifyPhotoModerationAccess(
   userId: string,
   userRole: string
 ): Promise<{
-  photo: { id: string; organizer_id: string };
+  photo: { id: string; organizer_id: string; event_id: string };
   isOwner: boolean;
   isAdmin: boolean;
 }> {
@@ -579,9 +579,11 @@ export async function verifyPhotoModerationAccess(
   const photoResult = await db.query<{
     id: string;
     organizer_id: string;
+    event_id: string;
   }>(
     `SELECT p.id,
-            e.organizer_id
+            e.organizer_id,
+            p.event_id
      FROM photos p
      JOIN events e ON p.event_id = e.id
      WHERE p.id = $1`,
