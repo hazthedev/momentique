@@ -3,10 +3,17 @@
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
 import { requireAuthForApi, verifyPhotoModerationAccess } from '@/lib/auth';
 import { deletePhotoAssets } from '@/lib/images';
+
+const shouldLogModeration = async (db: ReturnType<typeof getTenantDb>) => {
+  const result = await db.query<{ name: string | null }>(
+    'SELECT to_regclass($1) AS name',
+    ['public.photo_moderation_logs']
+  );
+  return Boolean(result.rows[0]?.name);
+};
 
 // ============================================
 // DELETE /api/photos/:id - Delete photo
@@ -19,14 +26,6 @@ export async function DELETE(
   try {
     const { id: photoId } = await params;
     const headers = request.headers;
-    const tenantId = getTenantId(headers);
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant not found', code: 'TENANT_NOT_FOUND' },
-        { status: 404 }
-      );
-    }
 
     // Authenticate and get user info
     const { payload, userId, tenantId: authTenantId } = await requireAuthForApi(headers);
@@ -66,22 +65,24 @@ export async function DELETE(
       // Storage failures should not block moderation action
     }
 
-    // Delete photo record
-    await db.delete('photos', { id: photoId });
-
     // Audit log
     const body = await request.json().catch(() => ({}));
     const reason = typeof body?.reason === 'string' ? body.reason.trim() : null;
 
-    await db.insert('photo_moderation_logs', {
-      photo_id: photoId,
-      event_id: existingPhoto.event_id,
-      tenant_id: authTenantId,
-      moderator_id: userId,
-      action: 'delete',
-      reason,
-      created_at: new Date(),
-    });
+    if (await shouldLogModeration(db)) {
+      await db.insert('photo_moderation_logs', {
+        photo_id: photoId,
+        event_id: existingPhoto.event_id,
+        tenant_id: authTenantId,
+        moderator_id: userId,
+        action: 'delete',
+        reason,
+        created_at: new Date(),
+      });
+    }
+
+    // Delete photo record
+    await db.delete('photos', { id: photoId });
 
     return NextResponse.json({
       data: { id: photoId, status: 'deleted' },
@@ -121,4 +122,3 @@ export async function DELETE(
     );
   }
 }
-

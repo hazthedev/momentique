@@ -39,6 +39,9 @@ const toIsoString = (value: Date | string) => {
 
 const isMissingTableError = (error: unknown) =>
   (error as { code?: string })?.code === '42P01';
+const isDatabaseError = (error: unknown) =>
+  Boolean((error as { code?: string })?.code) ||
+  (error instanceof Error && /ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENOTFOUND/i.test(error.message));
 
 export async function GET(request: NextRequest) {
   try {
@@ -219,6 +222,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: sorted });
   } catch (error) {
     console.error('[SUPERVISOR_ACTIVITY] Error:', error);
+    if (isDatabaseError(error)) {
+      return NextResponse.json({ data: [] });
+    }
     return NextResponse.json(
       { error: 'Failed to fetch recent activity', code: 'INTERNAL_ERROR' },
       { status: 500 }

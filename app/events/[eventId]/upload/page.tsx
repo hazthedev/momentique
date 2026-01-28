@@ -36,6 +36,33 @@ export default function PhotoUploadPage() {
   const [contributorName, setContributorName] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const { broadcastNewPhoto } = usePhotoGallery(eventId);
+  const [eventHref, setEventHref] = useState(`/e/${eventId}`);
+
+  useEffect(() => {
+    setEventHref(`/e/${eventId}`);
+  }, [eventId]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const resolveEventHref = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!response.ok) return;
+        const data = await response.json() as { user?: { role?: string } | null };
+        if (!isMounted) return;
+        const role = data.user?.role;
+        if (role === 'organizer' || role === 'admin' || role === 'super_admin') {
+          setEventHref(`/organizer/events/${eventId}`);
+        }
+      } catch {
+        // Default to guest view
+      }
+    };
+    resolveEventHref();
+    return () => {
+      isMounted = false;
+    };
+  }, [eventId]);
 
   // Fetch event info
   useEffect(() => {
@@ -178,7 +205,7 @@ export default function PhotoUploadPage() {
         });
         // Redirect to event page after showing success
         setTimeout(() => {
-          router.push(`/events/${eventId}`);
+          router.push(eventHref);
           router.refresh();
         }, 1500);
       } else {
@@ -225,7 +252,7 @@ export default function PhotoUploadPage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href={`/events/${eventId}`}
+            href={eventHref}
             className="mb-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />

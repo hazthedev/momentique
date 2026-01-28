@@ -11,6 +11,13 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 import type { IPhotoImage } from './types';
+import {
+  processSecureImage,
+  getTierProcessingOptions,
+  verifyExifStripped,
+  detectCorruption,
+} from './upload/image-processor';
+import type { SubscriptionTier } from './types';
 
 // ============================================
 // CONFIGURATION
@@ -53,87 +60,96 @@ function getR2Client(): S3Client {
 // ============================================
 
 /**
- * Compress and upload image to R2/S3 storage
- * Generates multiple sizes: thumbnail (150px), medium (800px), full (1920px)
+ * Compress and upload image to R2/S3 storage with security hardening
+ * Uses secure image processor with EXIF stripping and corruption detection
+ *
+ * @param eventId - Event ID for storage path
+ * @param photoId - Photo ID for storage path
+ * @param imageBuffer - Raw image buffer
+ * @param originalFilename - Original filename (for format detection)
+ * @param tier - Subscription tier for processing options (default: 'free')
  */
 export async function uploadImageToStorage(
   eventId: string,
   photoId: string,
   imageBuffer: Buffer,
-  originalFilename: string
+  originalFilename: string,
+  tier: SubscriptionTier = 'free'
 ): Promise<IPhotoImage> {
   const client = getR2Client();
   const path = `${eventId}/${photoId}`;
 
-  // Get image metadata
-  const image = sharp(imageBuffer);
-  const metadata = await image.metadata();
-  const originalWidth = metadata.width || MAX_DIMENSION;
-  const originalHeight = metadata.height || MAX_DIMENSION;
+  // ============================================
+  // 1. CHECK FOR CORRUPTION BEFORE PROCESSING
+  // ============================================
+  const corruptionCheck = await detectCorruption(imageBuffer);
+  if (corruptionCheck.isCorrupted) {
+    throw new Error(`Image is corrupted: ${corruptionCheck.reason}`);
+  }
 
-  // Generate full-size image (max 1920px)
-  const fullScale = Math.min(MAX_DIMENSION / originalWidth, MAX_DIMENSION / originalHeight, 1);
-  const fullWidth = Math.round(originalWidth * fullScale);
-  const fullHeight = Math.round(originalHeight * fullScale);
+  // ============================================
+  // 2. PROCESS IMAGE WITH SECURITY
+  // ============================================
+  const processingOptions = getTierProcessingOptions(tier);
+  const processed = await processSecureImage(imageBuffer, processingOptions);
 
-  const fullBuffer = await image
-    .clone()
-    .resize(fullWidth, fullHeight, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: JPEG_QUALITY })
-    .toBuffer();
+  // Verify EXIF was stripped
+  const exifCheckFull = await verifyExifStripped(processed.full.buffer);
+  const exifCheckMedium = await verifyExifStripped(processed.medium.buffer);
+  const exifCheckThumbnail = await verifyExifStripped(processed.thumbnail.buffer);
 
-  // Generate medium image (max 800px)
-  const mediumScale = Math.min(MEDIUM_SIZE / originalWidth, MEDIUM_SIZE / originalHeight, 1);
-  const mediumWidth = Math.round(originalWidth * mediumScale);
-  const mediumHeight = Math.round(originalHeight * mediumScale);
+  if (!exifCheckFull || !exifCheckMedium || !exifCheckThumbnail) {
+    console.warn('[SECURITY] EXIF data detected in processed image - this should not happen');
+  }
 
-  const mediumBuffer = await image
-    .clone()
-    .resize(mediumWidth, mediumHeight, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: JPEG_QUALITY })
-    .toBuffer();
+  // ============================================
+  // 3. DETERMINE FILE EXTENSION
+  // ============================================
+  const ext = processingOptions.outputFormat === 'webp' ? 'webp' : 'jpg';
 
-  // Generate thumbnail (150px square, with cover fit)
-  const thumbnailBuffer = await image
-    .clone()
-    .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: 'cover', position: 'center' })
-    .jpeg({ quality: JPEG_QUALITY })
-    .toBuffer();
+  // ============================================
+  // 4. UPLOAD ALL SIZES TO R2
+  // ============================================
+  const contentType = processingOptions.outputFormat === 'webp'
+    ? 'image/webp'
+    : 'image/jpeg';
 
-  // Upload all three sizes to R2 in parallel
   await Promise.all([
     client.send(new PutObjectCommand({
       Bucket: R2_BUCKET_NAME,
-      Key: `${path}/full.jpg`,
-      Body: fullBuffer,
-      ContentType: 'image/jpeg',
+      Key: `${path}/full.${ext}`,
+      Body: processed.full.buffer,
+      ContentType: contentType,
       CacheControl: 'public, max-age=31536000, immutable',
     })),
     client.send(new PutObjectCommand({
       Bucket: R2_BUCKET_NAME,
-      Key: `${path}/medium.jpg`,
-      Body: mediumBuffer,
-      ContentType: 'image/jpeg',
+      Key: `${path}/medium.${ext}`,
+      Body: processed.medium.buffer,
+      ContentType: contentType,
       CacheControl: 'public, max-age=31536000, immutable',
     })),
     client.send(new PutObjectCommand({
       Bucket: R2_BUCKET_NAME,
-      Key: `${path}/thumbnail.jpg`,
-      Body: thumbnailBuffer,
-      ContentType: 'image/jpeg',
+      Key: `${path}/thumbnail.${ext}`,
+      Body: processed.thumbnail.buffer,
+      ContentType: contentType,
       CacheControl: 'public, max-age=31536000, immutable',
     })),
   ]);
 
+  // ============================================
+  // 5. RETURN RESULTS
+  // ============================================
   return {
-    original_url: `${R2_PUBLIC_URL}/${path}/full.jpg`,
-    thumbnail_url: `${R2_PUBLIC_URL}/${path}/thumbnail.jpg`,
-    medium_url: `${R2_PUBLIC_URL}/${path}/medium.jpg`,
-    full_url: `${R2_PUBLIC_URL}/${path}/full.jpg`,
-    width: fullWidth,
-    height: fullHeight,
-    file_size: fullBuffer.length,
-    format: 'jpg',
+    original_url: `${R2_PUBLIC_URL}/${path}/full.${ext}`,
+    thumbnail_url: `${R2_PUBLIC_URL}/${path}/thumbnail.${ext}`,
+    medium_url: `${R2_PUBLIC_URL}/${path}/medium.${ext}`,
+    full_url: `${R2_PUBLIC_URL}/${path}/full.${ext}`,
+    width: processed.full.width,
+    height: processed.full.height,
+    file_size: processed.full.size,
+    format: ext,
   };
 }
 
@@ -300,8 +316,12 @@ export async function generateMediumImage(
 // IMAGE VALIDATION
 // ============================================
 
+// Re-export the comprehensive validator functions
+export { validateUploadedImage, validateByTier, getTierValidationOptions } from './upload/validator';
+
 /**
- * Validate image file
+ * @deprecated Use validateUploadedImage from './upload/validator' instead
+ * This is kept for backward compatibility with existing code
  */
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
   // Check file size (max 10MB)

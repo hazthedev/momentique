@@ -28,17 +28,17 @@ export async function middleware(request: NextRequest) {
 
   // For local development, inject default tenant headers
   if (hostname === 'localhost' || hostname.startsWith('127.0.0.1') || hostname.startsWith('192.168.')) {
-    const response = NextResponse.next();
-    response.headers.set('x-tenant-id', '00000000-0000-0000-0000-000000000001');
-    response.headers.set('x-tenant-type', 'master');
-    response.headers.set('x-tenant-tier', 'enterprise');
-    response.headers.set('x-tenant-name', 'Gatherly Dev');
-    response.headers.set('x-tenant-branding', JSON.stringify({
+    const headers = new Headers(request.headers);
+    headers.set('x-tenant-id', '00000000-0000-0000-0000-000000000001');
+    headers.set('x-tenant-type', 'master');
+    headers.set('x-tenant-tier', 'enterprise');
+    headers.set('x-tenant-name', 'Gatherly Dev');
+    headers.set('x-tenant-branding', JSON.stringify({
       primary_color: '#8B5CF6',
       secondary_color: '#EC4899',
       accent_color: '#F59E0B',
     }));
-    response.headers.set('x-tenant-features', JSON.stringify({
+    headers.set('x-tenant-features', JSON.stringify({
       lucky_draw: true,
       photo_reactions: true,
       video_uploads: true,
@@ -48,16 +48,16 @@ export async function middleware(request: NextRequest) {
       white_label: true,
       advanced_analytics: true,
     }));
-    response.headers.set('x-tenant-limits', JSON.stringify({
+    headers.set('x-tenant-limits', JSON.stringify({
       max_events_per_month: -1,
       max_storage_gb: -1,
       max_admins: -1,
       max_photos_per_event: -1,
       max_draw_entries_per_event: -1,
     }));
-    response.headers.set('x-is-custom-domain', 'false');
-    response.headers.set('x-is-master', 'true');
-    return response;
+    headers.set('x-is-custom-domain', 'false');
+    headers.set('x-is-master', 'true');
+    return NextResponse.next({ request: { headers } });
   }
 
   // For production, the tenant resolution would happen here

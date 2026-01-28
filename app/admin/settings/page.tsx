@@ -14,6 +14,14 @@ const DEFAULT_SETTINGS: ISystemSettings = {
     max_file_mb: 10,
     allowed_types: ['image/jpeg', 'image/png', 'image/heic', 'image/webp'],
   },
+  moderation: {
+    enabled: false,
+    aws_region: 'us-east-1',
+    aws_access_key_id: undefined,
+    aws_secret_access_key: undefined,
+    confidence_threshold: 0.8,
+    auto_reject: true,
+  },
   events: {
     default_settings: {
       theme: {
@@ -59,6 +67,10 @@ const mergeSettings = (
       ...(patch.uploads || {}),
       allowed_types: patch.uploads?.allowed_types || base.uploads.allowed_types,
     },
+    moderation: {
+      ...base.moderation,
+      ...(patch.moderation || {}),
+    },
     events: {
       default_settings: {
         theme: {
@@ -82,6 +94,7 @@ export default function SupervisorSettingsPage() {
   const [settings, setSettings] = useState<ISystemSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAwsKeys, setShowAwsKeys] = useState(false);
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -219,6 +232,139 @@ export default function SupervisorSettingsPage() {
                 ))}
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Content Moderation</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            AWS Rekognition for detecting inappropriate content. Free tier: 5,000 scans/month.
+          </p>
+          <div className="mt-4 space-y-4 text-sm">
+            <label className="flex items-center justify-between gap-2 text-gray-600 dark:text-gray-300">
+              <span>Enable AI moderation</span>
+              <input
+                type="checkbox"
+                checked={settings.moderation?.enabled || false}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    moderation: { ...prev.moderation, enabled: e.target.checked },
+                  }))
+                }
+                className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+              />
+            </label>
+
+            {settings.moderation?.enabled && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-2 text-gray-600 dark:text-gray-300">
+                    <span>AWS Region</span>
+                    <select
+                      value={settings.moderation.aws_region || 'us-east-1'}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          moderation: { ...prev.moderation, aws_region: e.target.value },
+                        }))
+                      }
+                      className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-900"
+                    >
+                      <option value="us-east-1">us-east-1</option>
+                      <option value="us-east-2">us-east-2</option>
+                      <option value="us-west-1">us-west-1</option>
+                      <option value="us-west-2">us-west-2</option>
+                      <option value="eu-west-1">eu-west-1</option>
+                      <option value="eu-central-1">eu-central-1</option>
+                      <option value="ap-southeast-1">ap-southeast-1</option>
+                    </select>
+                  </label>
+
+                  <label className="flex flex-col gap-2 text-gray-600 dark:text-gray-300">
+                    <span>Confidence Threshold ({Math.round((settings.moderation.confidence_threshold || 0.8) * 100)}%)</span>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={0.99}
+                      step={0.01}
+                      value={settings.moderation.confidence_threshold || 0.8}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          moderation: { ...prev.moderation, confidence_threshold: parseFloat(e.target.value) },
+                        }))
+                      }
+                      className="w-full"
+                    />
+                  </label>
+                </div>
+
+                <label className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={settings.moderation.auto_reject || false}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        moderation: { ...prev.moderation, auto_reject: e.target.checked },
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                  />
+                  <span>Auto-reject inappropriate content (otherwise flag for review)</span>
+                </label>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">AWS Credentials</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAwsKeys(!showAwsKeys)}
+                      className="text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                    >
+                      {showAwsKeys ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+
+                  <label className="flex flex-col gap-2 text-gray-600 dark:text-gray-300">
+                    <span>AWS Access Key ID</span>
+                    <input
+                      type={showAwsKeys ? 'text' : 'password'}
+                      value={settings.moderation.aws_access_key_id || ''}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          moderation: { ...prev.moderation, aws_access_key_id: e.target.value || undefined },
+                        }))
+                      }
+                      placeholder="AKIAIOSFODNN7EXAMPLE"
+                      className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-900"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-2 text-gray-600 dark:text-gray-300">
+                    <span>AWS Secret Access Key</span>
+                    <input
+                      type={showAwsKeys ? 'text' : 'password'}
+                      value={settings.moderation.aws_secret_access_key || ''}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          moderation: { ...prev.moderation, aws_secret_access_key: e.target.value || undefined },
+                        }))
+                      }
+                      placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                      className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-900"
+                    />
+                  </label>
+
+                  <p className="text-xs text-gray-500">
+                    Credentials are stored securely in the database. Leave empty to use environment variables.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </section>
 

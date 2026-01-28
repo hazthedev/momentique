@@ -154,11 +154,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[LOGIN] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         success: false,
         error: 'INTERNAL_ERROR',
-        message: 'An error occurred during login',
+        message: process.env.NODE_ENV === 'production'
+          ? 'An error occurred during login'
+          : `Login error: ${errorMessage}`,
       },
       { status: 500 }
     );

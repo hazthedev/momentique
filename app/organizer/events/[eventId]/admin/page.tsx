@@ -325,18 +325,16 @@ export default function EventAdminPage() {
                             )}
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {log.action.toUpperCase()}
-                            </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {log.moderatorName || log.moderatorEmail}
-                              {log.photoStatus ? ` • ${log.photoStatus}` : ''}
+                              {(() => {
+                                const statusRaw = (log.photoStatus || log.action || '').toLowerCase();
+                                if (statusRaw === 'approve') return 'Approved';
+                                if (statusRaw === 'reject') return 'Rejected';
+                                return statusRaw
+                                  ? `${statusRaw.charAt(0).toUpperCase()}${statusRaw.slice(1)}`
+                                  : 'Updated';
+                              })()}
                             </div>
-                            {log.reason && (
-                              <div className="text-xs text-gray-600 dark:text-gray-300">
-                                Reason: {log.reason}
-                              </div>
-                            )}
                           </div>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">

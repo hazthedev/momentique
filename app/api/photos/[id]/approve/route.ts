@@ -3,9 +3,16 @@
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
 import { requireAuthForApi, verifyPhotoModerationAccess } from '@/lib/auth';
+
+const shouldLogModeration = async (db: ReturnType<typeof getTenantDb>) => {
+  const result = await db.query<{ name: string | null }>(
+    'SELECT to_regclass($1) AS name',
+    ['public.photo_moderation_logs']
+  );
+  return Boolean(result.rows[0]?.name);
+};
 
 // ============================================
 // PATCH /api/photos/:id/approve - Approve photo
@@ -18,14 +25,6 @@ export async function PATCH(
   try {
     const { id: photoId } = await params;
     const headers = request.headers;
-    const tenantId = getTenantId(headers);
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant not found', code: 'TENANT_NOT_FOUND' },
-        { status: 404 }
-      );
-    }
 
     // Authenticate and get user info
     const { payload, userId, tenantId: authTenantId } = await requireAuthForApi(headers);
@@ -57,15 +56,17 @@ export async function PATCH(
       { id: photoId }
     );
 
-    await db.insert('photo_moderation_logs', {
-      photo_id: photoId,
-      event_id: photo.event_id,
-      tenant_id: authTenantId,
-      moderator_id: userId,
-      action: 'approve',
-      reason,
-      created_at: new Date(),
-    });
+    if (await shouldLogModeration(db)) {
+      await db.insert('photo_moderation_logs', {
+        photo_id: photoId,
+        event_id: photo.event_id,
+        tenant_id: authTenantId,
+        moderator_id: userId,
+        action: 'approve',
+        reason,
+        created_at: new Date(),
+      });
+    }
 
     return NextResponse.json({
       data: { id: photoId, status: 'approved' },

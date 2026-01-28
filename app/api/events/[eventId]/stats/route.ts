@@ -3,10 +3,11 @@
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
 import { verifyAccessToken } from '@/lib/auth';
-import { extractSessionId, validateSession } from '@/lib/session';
+import { extractSessionId, getSession, refreshSession } from '@/lib/session';
 import type { IPhoto } from '@/lib/types';
 
 interface EventStats {
@@ -51,18 +52,29 @@ export async function GET(
     }
 
     // Get user from session or JWT token
-    const cookieHeader = headers.get('cookie');
+    let cookieHeader = headers.get('cookie');
     const authHeader = headers.get('authorization');
     let userId: string | null = null;
     let userRole: string | null = null;
 
-    // Try session-based auth first
+    if (!cookieHeader) {
+      const sessionCookie = (await cookies()).get('session')?.value;
+      if (sessionCookie) {
+        cookieHeader = `session=${sessionCookie}`;
+      }
+    }
+
+    // Try session-based auth first (Redis only to avoid extra DB connections)
     const sessionResult = extractSessionId(cookieHeader, authHeader);
     if (sessionResult.sessionId) {
-      const session = await validateSession(sessionResult.sessionId, false);
-      if (session.valid && session.user) {
-        userId = session.user.id;
-        userRole = session.user.role;
+      const session = await getSession(sessionResult.sessionId);
+      if (session) {
+        const now = Date.now();
+        if (now <= session.expiresAt) {
+          userId = session.userId;
+          userRole = session.role;
+          await refreshSession(sessionResult.sessionId);
+        }
       }
     }
 
@@ -149,7 +161,7 @@ export async function GET(
     const topContributors = Array.from(contributorMap.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+      .slice(0, 3);
 
     // Calculate upload timeline (last 7 days)
     const uploadTimeline: { date: string; count: number }[] = [];
@@ -180,7 +192,7 @@ export async function GET(
     const topLikedPhotos = photos
       .map((photo) => ({
         id: photo.id,
-        imageUrl: photo.images?.thumbnail_url || photo.images?.medium_url || photo.images?.full_url || photo.images?.original_url || '',
+        imageUrl: photo.images?.medium_url || photo.images?.full_url || photo.images?.original_url || photo.images?.thumbnail_url || '',
         heartCount: photo.reactions?.heart || 0,
         contributorName: photo.is_anonymous ? 'Anonymous' : (photo.contributor_name || 'Guest'),
         isAnonymous: photo.is_anonymous,

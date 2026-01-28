@@ -29,10 +29,10 @@ export async function GET(request: NextRequest) {
     if (!sessionId) {
       return NextResponse.json(
         {
-          error: 'unauthorized',
+          user: null,
           message: 'No session provided',
         },
-        { status: 401 }
+        { status: 200 }
       );
     }
 
@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
     if (!result.valid || !result.user) {
       return NextResponse.json(
         {
-          error: 'unauthorized',
+          user: null,
           message: result.error || 'Invalid session',
         },
-        { status: 401 }
+        { status: 200 }
       );
     }
 

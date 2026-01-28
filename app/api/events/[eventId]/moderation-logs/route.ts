@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { requireAuthForApi } from '@/lib/auth';
 
+const isMissingTableError = (error: unknown) =>
+  (error as { code?: string })?.code === '42P01';
+
 // ============================================
 // GET /api/events/:eventId/moderation-logs
 // ============================================
@@ -41,6 +44,15 @@ export async function GET(
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 200);
     const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10), 0);
 
+    const tableCheck = await db.query<{ name: string | null }>(
+      'SELECT to_regclass($1) AS name',
+      ['public.photo_moderation_logs']
+    );
+
+    if (!tableCheck.rows[0]?.name) {
+      return NextResponse.json({ data: [] });
+    }
+
     const result = await db.query<{
       id: string;
       photoId: string;
@@ -73,7 +85,11 @@ export async function GET(
         LIMIT $2 OFFSET $3
       `,
       [eventId, limit, offset]
-    );
+    ).catch((error) => (isMissingTableError(error) ? null : Promise.reject(error)));
+
+    if (!result) {
+      return NextResponse.json({ data: [] });
+    }
 
     return NextResponse.json({ data: result.rows });
   } catch (error) {

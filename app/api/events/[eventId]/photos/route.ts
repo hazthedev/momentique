@@ -5,12 +5,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantId, getTenantContextFromHeaders } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
-import { uploadImageToStorage, validateImageFile } from '@/lib/images';
+import { uploadImageToStorage, validateImageFile, validateUploadedImage, getTierValidationOptions } from '@/lib/images';
 import { generatePhotoId } from '@/lib/utils';
 import { createEntryFromPhoto } from '@/lib/lucky-draw';
 import { verifyAccessToken } from '@/lib/auth';
 import { extractSessionId, validateSession } from '@/lib/session';
 import { checkPhotoLimit } from '@/lib/limit-check';
+import { getSystemSettings } from '@/lib/system-settings';
+import { checkUploadRateLimit } from '@/lib/rate-limit';
+import { validateRecaptchaForUpload, isRecaptchaRequiredForUploads } from '@/lib/recaptcha';
+import { isModerationEnabled } from '@/lib/moderation/auto-moderate';
+import { queuePhotoScan } from '@/jobs/scan-content';
 import type { DeviceType, SubscriptionTier } from '@/lib/types';
 
 // ============================================
@@ -73,6 +78,128 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // ============================================
+    // RATE LIMITING CHECK
+    // ============================================
+    // Get identifiers for rate limiting (will be reused below for auth)
+    const uploadIpAddress = headers.get('x-forwarded-for') || headers.get('x-real-ip') || 'unknown';
+    const uploadFingerprint = headers.get('x-fingerprint');
+
+    // Determine user ID for rate limiting
+    let uploadUserId: string | undefined;
+    const uploadAuthHeader = headers.get('authorization');
+
+    if (uploadAuthHeader) {
+      try {
+        const token = uploadAuthHeader.replace('Bearer ', '');
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        uploadUserId = payload.sub;
+      } catch {
+        // Invalid token - will be treated as guest below
+      }
+    }
+
+    // Check rate limits (IP, fingerprint, event, burst protection)
+    const rateLimitResult = await checkUploadRateLimit(
+      uploadIpAddress,
+      uploadFingerprint || null,
+      eventId,
+      uploadUserId
+    );
+
+    if (!rateLimitResult.allowed) {
+      const response = NextResponse.json(
+        {
+          error: rateLimitResult.reason || 'Rate limit exceeded',
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: rateLimitResult.retryAfter,
+          limitType: rateLimitResult.limitType,
+        },
+        { status: 429 }
+      );
+
+      // Add rate limit headers
+      if (rateLimitResult.resetAt) {
+        response.headers.set('Retry-After', String(rateLimitResult.retryAfter || 60));
+        response.headers.set('X-RateLimit-Reset', Math.floor(rateLimitResult.resetAt.getTime() / 1000).toString());
+      }
+
+      return response;
+    }
+
+    // ============================================
+    // RECAPTCHA VERIFICATION (Anonymous Uploads)
+    // ============================================
+    // Check if user is authenticated
+    const isAuthenticated = !!uploadUserId;
+    const requiresRecaptcha = isRecaptchaRequiredForUploads(undefined, isAuthenticated);
+
+    if (!isAuthenticated && requiresRecaptcha) {
+      // Check for reCAPTCHA token in request body
+      const contentType = headers.get('content-type') || '';
+
+      let recaptchaToken: string | undefined;
+
+      // Extract token from either JSON or form data
+      if (contentType.includes('application/json')) {
+        const body = await request.json();
+        recaptchaToken = body.recaptchaToken;
+      } else {
+        const formData = await request.formData();
+        recaptchaToken = formData.get('recaptchaToken') as string | undefined;
+      }
+
+      if (!recaptchaToken) {
+        return NextResponse.json(
+          {
+            error: 'CAPTCHA token is required for anonymous uploads',
+            code: 'MISSING_CAPTCHA',
+            requiresCaptcha: true,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Verify the token
+      const recaptchaResult = await validateRecaptchaForUpload(recaptchaToken);
+
+      if (!recaptchaResult.valid) {
+        return NextResponse.json(
+          {
+            error: recaptchaResult.error || 'CAPTCHA verification failed',
+            code: recaptchaResult.code || 'CAPTCHA_FAILED',
+            score: recaptchaResult.score,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Log the score for monitoring
+      console.log('[RECAPTCHA] Anonymous upload verification:', {
+        score: recaptchaResult.score,
+        eventId,
+        ip: uploadIpAddress,
+        fingerprint: uploadFingerprint,
+      });
+    }
+
+    const resolveEffectiveLimits = async () => {
+      const systemSettings = await getSystemSettings().catch(() => null);
+      const systemLimits = systemSettings?.events?.default_settings?.limits;
+
+      const maxPerUser =
+        systemLimits?.max_photos_per_user ??
+        event.settings?.limits?.max_photos_per_user ??
+        100;
+
+      const maxTotalRaw =
+        systemLimits?.max_total_photos ??
+        event.settings?.limits?.max_total_photos ??
+        1000;
+
+      return { maxPerUser, maxTotalRaw };
+    };
 
     const contentType = headers.get('content-type') || '';
 
@@ -154,9 +281,9 @@ export async function POST(
           );
         }
 
-        const maxPerUser = event.settings.limits.max_photos_per_user || 100;
+        const { maxPerUser, maxTotalRaw } = await resolveEffectiveLimits();
         const maxTotal = Math.min(
-          event.settings.limits.max_total_photos || 1000,
+          maxTotalRaw,
           tierLimitResult.limit > 0 ? tierLimitResult.limit : Infinity
         );
 
@@ -234,6 +361,26 @@ export async function POST(
         }
       }
 
+      // ============================================
+      // AI CONTENT MODERATION
+      // ============================================
+      // Queue photo for AI scanning if moderation is enabled
+      if (event.settings.features.moderation_required && await isModerationEnabled()) {
+        try {
+          await queuePhotoScan({
+            photoId: photo.id,
+            eventId: eventId,
+            imageUrl: photo.images.full_url,
+            userId: userRole === 'guest' ? undefined : userId,
+            priority: 'normal',
+          });
+          console.log('[MODERATION] Photo queued for AI scanning:', photo.id);
+        } catch (scanError) {
+          console.error('[MODERATION] Failed to queue photo for scanning:', scanError);
+          // Don't fail the upload if scanning fails
+        }
+      }
+
       return NextResponse.json({
         data: [{
           id: photo.id,
@@ -286,10 +433,24 @@ export async function POST(
     }
 
     for (const file of uploadFiles) {
-      const validation = validateImageFile(file);
+      // Get tier-based validation options
+      const tenantContext = getTenantContextFromHeaders(headers);
+      const subscriptionTier = (tenantContext?.tenant?.subscription_tier || 'free') as SubscriptionTier;
+      const validationOptions = getTierValidationOptions(subscriptionTier);
+
+      // Use comprehensive validation with magic byte check
+      const validation = await validateUploadedImage(file, validationOptions);
       if (!validation.valid) {
         return NextResponse.json(
-          { error: validation.error, code: 'INVALID_FILE' },
+          {
+            error: validation.error,
+            code: validation.code || 'INVALID_FILE',
+            details: validation.metadata ? {
+              allowedTypes: validationOptions.allowedMimeTypes,
+              maxSizeMB: Math.round((validationOptions.maxSizeBytes || 0) / (1024 * 1024)),
+              maxDimensions: `${validationOptions.maxWidth}x${validationOptions.maxHeight}`,
+            } : undefined,
+          },
           { status: 400 }
         );
       }
@@ -345,9 +506,9 @@ export async function POST(
       }
 
       // Then check event-specific limits (per-user and total)
-      const maxPerUser = event.settings.limits.max_photos_per_user || 100;
+      const { maxPerUser, maxTotalRaw } = await resolveEffectiveLimits();
       const maxTotal = Math.min(
-        event.settings.limits.max_total_photos || 1000,
+        maxTotalRaw,
         tierLimitResult.limit > 0 ? tierLimitResult.limit : Infinity
       );
 
@@ -393,11 +554,17 @@ export async function POST(
       const buffer = Buffer.from(arrayBuffer);
 
       const photoId = generatePhotoId();
+
+      // Get tier for processing options
+      const tenantContext = getTenantContextFromHeaders(headers);
+      const subscriptionTier = (tenantContext?.tenant?.subscription_tier || 'free') as SubscriptionTier;
+
       const images = await uploadImageToStorage(
         eventId,
         photoId,
         buffer,
-        file.name
+        file.name,
+        subscriptionTier
       );
 
       const photo = await db.insert('photos', {
@@ -426,6 +593,26 @@ export async function POST(
           await createEntryFromPhoto(tenantId, eventId, photo.id, userId, entryName);
         } catch (entryError) {
           console.warn('[API] Lucky draw entry skipped:', entryError);
+        }
+      }
+
+      // ============================================
+      // AI CONTENT MODERATION
+      // ============================================
+      // Queue photo for AI scanning if moderation is enabled
+      if (event.settings.features.moderation_required && await isModerationEnabled()) {
+        try {
+          await queuePhotoScan({
+            photoId: photo.id,
+            eventId: eventId,
+            imageUrl: photo.images.full_url,
+            userId: userRole === 'guest' ? undefined : userId,
+            priority: 'normal',
+          });
+          console.log('[MODERATION] Photo queued for AI scanning:', photo.id);
+        } catch (scanError) {
+          console.error('[MODERATION] Failed to queue photo for scanning:', scanError);
+          // Don't fail the upload if scanning fails
         }
       }
 

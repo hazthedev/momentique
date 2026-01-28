@@ -23,63 +23,102 @@ export interface IRateLimitConfig {
 export const RATE_LIMIT_CONFIGS = {
   // Login: 5 attempts per 15 minutes per email
   loginEmail: {
-    maxRequests: 999999,
+    maxRequests: 5,
     windowSeconds: 900, // 15 minutes
     keyPrefix: 'ratelimit:login:email',
   },
 
   // Login: 10 attempts per 15 minutes per IP
   loginIp: {
-    maxRequests: 999999,
+    maxRequests: 10,
     windowSeconds: 900, // 15 minutes
     keyPrefix: 'ratelimit:login:ip',
   },
 
   // Register: 1 registration per hour per email
   registerEmail: {
-    maxRequests: 999999,
+    maxRequests: 1,
     windowSeconds: 3600, // 1 hour
     keyPrefix: 'ratelimit:register:email',
   },
 
   // Register: 3 registrations per hour per IP
   registerIp: {
-    maxRequests: 999999,
+    maxRequests: 3,
     windowSeconds: 3600, // 1 hour
     keyPrefix: 'ratelimit:register:ip',
   },
 
   // Password reset: 3 attempts per hour per email
   passwordResetEmail: {
-    maxRequests: 999999,
+    maxRequests: 3,
     windowSeconds: 3600, // 1 hour
     keyPrefix: 'ratelimit:passwordreset:email',
   },
 
   // API: 100 requests per minute per user
   apiUser: {
-    maxRequests: 999999,
+    maxRequests: 100,
     windowSeconds: 60, // 1 minute
     keyPrefix: 'ratelimit:api:user',
   },
 
   // API: 1000 requests per minute per IP (for anonymous)
   apiIp: {
-    maxRequests: 999999,
+    maxRequests: 1000,
     windowSeconds: 60, // 1 minute
     keyPrefix: 'ratelimit:api:ip',
   },
 
-  // Photo upload: 10 uploads per minute per user
-  photoUploadUser: {
-    maxRequests: 999999,
+  // ============================================
+  // PHOTO UPLOAD RATE LIMITS (SECURITY)
+  // ============================================
+
+  // Per IP: 10 uploads per hour
+  uploadPerIp: {
+    maxRequests: 10,
+    windowSeconds: 3600, // 1 hour
+    keyPrefix: 'ratelimit:upload:ip',
+  },
+
+  // Per fingerprint (guest): 10 uploads per hour
+  uploadPerFingerprint: {
+    maxRequests: 10,
+    windowSeconds: 3600, // 1 hour
+    keyPrefix: 'ratelimit:upload:fingerprint',
+  },
+
+  // Per event: 100 uploads per day (prevent spamming a specific event)
+  uploadPerEvent: {
+    maxRequests: 100,
+    windowSeconds: 86400, // 24 hours
+    keyPrefix: 'ratelimit:upload:event',
+  },
+
+  // Burst protection: max 5 uploads per minute per IP
+  uploadBurstPerIp: {
+    maxRequests: 5,
     windowSeconds: 60, // 1 minute
+    keyPrefix: 'ratelimit:upload:burst:ip',
+  },
+
+  // Burst protection: max 5 uploads per minute per fingerprint
+  uploadBurstPerFingerprint: {
+    maxRequests: 5,
+    windowSeconds: 60, // 1 minute
+    keyPrefix: 'ratelimit:upload:burst:fingerprint',
+  },
+
+  // Per user (authenticated): 50 uploads per hour
+  uploadPerUser: {
+    maxRequests: 50,
+    windowSeconds: 3600, // 1 hour
     keyPrefix: 'ratelimit:upload:user',
   },
 
   // Generic: 100 requests per minute
   generic: {
-    maxRequests: 999999,
+    maxRequests: 100,
     windowSeconds: 60,
     keyPrefix: 'ratelimit:generic',
   },
@@ -531,4 +570,178 @@ export async function clearRateLimitPattern(pattern: string): Promise<number> {
 
   const redis = getRedisClient();
   return await redis.del(...keys);
+}
+
+// ============================================
+// PHOTO UPLOAD RATE LIMITING
+// ============================================
+
+/**
+ * Upload rate limit check result
+ */
+export interface IUploadRateLimitResult {
+  allowed: boolean;
+  reason?: string;
+  limitType?: 'ip_hourly' | 'fingerprint_hourly' | 'event_daily' | 'burst_ip' | 'burst_fingerprint' | 'user_hourly';
+  resetAt?: Date;
+  retryAfter?: number;
+}
+
+/**
+ * Check all applicable upload rate limits for a request
+ * Combines: IP limits, fingerprint limits, event limits, and burst protection
+ *
+ * @param ipAddress - User's IP address
+ * @param fingerprint - User's fingerprint (for guests)
+ * @param eventId - Event ID being uploaded to
+ * @param userId - User ID (for authenticated users)
+ * @returns Rate limit check result
+ */
+export async function checkUploadRateLimit(
+  ipAddress: string,
+  fingerprint: string | null,
+  eventId: string,
+  userId?: string
+): Promise<IUploadRateLimitResult> {
+  try {
+    // Run all rate limit checks in parallel for efficiency
+    const checks = await Promise.all([
+      // IP-based limits
+      checkRateLimit(ipAddress, RATE_LIMIT_CONFIGS.uploadPerIp),
+      checkRateLimit(ipAddress, RATE_LIMIT_CONFIGS.uploadBurstPerIp),
+
+      // Fingerprint-based limits (if provided)
+      fingerprint ? checkRateLimit(fingerprint, RATE_LIMIT_CONFIGS.uploadPerFingerprint) : null,
+      fingerprint ? checkRateLimit(fingerprint, RATE_LIMIT_CONFIGS.uploadBurstPerFingerprint) : null,
+
+      // Event-based limit
+      checkRateLimit(eventId, RATE_LIMIT_CONFIGS.uploadPerEvent),
+
+      // User-based limit (if authenticated)
+      userId ? checkRateLimit(userId, RATE_LIMIT_CONFIGS.uploadPerUser) : null,
+    ]);
+
+    // Check if any limit was exceeded
+    const ipHourly = checks[0];
+    const ipBurst = checks[1];
+    const fingerprintHourly = checks[2];
+    const fingerprintBurst = checks[3];
+    const eventDaily = checks[4];
+    const userHourly = checks[5];
+
+    // Find which limit blocked the request (if any)
+    if (!ipHourly.allowed) {
+      return {
+        allowed: false,
+        reason: 'IP address upload limit exceeded (10 per hour)',
+        limitType: 'ip_hourly',
+        resetAt: ipHourly.resetAt,
+        retryAfter: getRetryAfter(ipHourly),
+      };
+    }
+
+    if (!ipBurst.allowed) {
+      return {
+        allowed: false,
+        reason: 'Too many upload attempts (5 per minute maximum)',
+        limitType: 'burst_ip',
+        resetAt: ipBurst.resetAt,
+        retryAfter: getRetryAfter(ipBurst),
+      };
+    }
+
+    if (fingerprint && fingerprintHourly && !fingerprintHourly.allowed) {
+      return {
+        allowed: false,
+        reason: 'Upload limit exceeded (10 per hour)',
+        limitType: 'fingerprint_hourly',
+        resetAt: fingerprintHourly.resetAt,
+        retryAfter: getRetryAfter(fingerprintHourly),
+      };
+    }
+
+    if (fingerprint && fingerprintBurst && !fingerprintBurst.allowed) {
+      return {
+        allowed: false,
+        reason: 'Too many upload attempts (5 per minute maximum)',
+        limitType: 'burst_fingerprint',
+        resetAt: fingerprintBurst.resetAt,
+        retryAfter: getRetryAfter(fingerprintBurst),
+      };
+    }
+
+    if (!eventDaily.allowed) {
+      return {
+        allowed: false,
+        reason: 'Event upload limit exceeded (100 per day)',
+        limitType: 'event_daily',
+        resetAt: eventDaily.resetAt,
+        retryAfter: getRetryAfter(eventDaily),
+      };
+    }
+
+    if (userHourly && !userHourly.allowed) {
+      return {
+        allowed: false,
+        reason: 'User upload limit exceeded (50 per hour)',
+        limitType: 'user_hourly',
+        resetAt: userHourly.resetAt,
+        retryAfter: getRetryAfter(userHourly),
+      };
+    }
+
+    // All checks passed
+    return { allowed: true };
+  } catch (error) {
+    // Redis unavailable - for rate limiting on uploads, FAIL CLOSED
+    // It's better to temporarily block uploads than to risk abuse
+    console.error('[RATE_LIMIT] Upload rate limit check failed, blocking request:', error);
+    return {
+      allowed: false,
+      reason: 'Rate limit service unavailable',
+      retryAfter: 60, // Retry after 1 minute
+    };
+  }
+}
+
+/**
+ * Get current upload rate limit status for display
+ *
+ * @param ipAddress - User's IP address
+ * @param fingerprint - User's fingerprint
+ * @param eventId - Event ID
+ * @returns Current usage and limits
+ */
+export async function getUploadRateLimitStatus(
+  ipAddress: string,
+  fingerprint: string | null,
+  eventId: string
+): Promise<{
+  ipHourly: { used: number; limit: number; resetAt: Date };
+  ipBurst: { used: number; limit: number; resetAt: Date };
+  eventDaily: { used: number; limit: number; resetAt: Date };
+}> {
+  const [ipHourlyStatus, ipBurstStatus, eventStatus] = await Promise.all([
+    getRateLimitStatus(ipAddress, RATE_LIMIT_CONFIGS.uploadPerIp),
+    getRateLimitStatus(ipAddress, RATE_LIMIT_CONFIGS.uploadBurstPerIp),
+    getRateLimitStatus(eventId, RATE_LIMIT_CONFIGS.uploadPerEvent),
+  ]);
+
+  return {
+    ipHourly: {
+      used: ipHourlyStatus.count,
+      limit: ipHourlyStatus.limit,
+      resetAt: ipHourlyStatus.resetAt,
+    },
+    ipBurst: {
+      used: ipBurstStatus.count,
+      limit: ipBurstStatus.limit,
+      resetAt: ipBurstStatus.resetAt,
+    },
+    eventDaily: {
+      used: eventStatus.count,
+      limit: eventStatus.limit,
+      resetAt: eventStatus.resetAt,
+    },
+  };
 }

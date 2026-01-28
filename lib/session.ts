@@ -16,6 +16,19 @@ import { getTenantDb } from './db';
 const SESSION_TTL_SECONDS = parseInt(process.env.SESSION_TTL_SECONDS || '604800', 10); // 7 days default
 const SESSION_MAX_AGE_SECONDS = parseInt(process.env.SESSION_MAX_AGE_SECONDS || '2592000', 10); // 30 days absolute max
 const SESSION_REMEMBER_ME_TTL = parseInt(process.env.SESSION_REMEMBER_ME_TTL || '2592000', 10); // 30 days for remember me
+const USE_IN_MEMORY_SESSIONS = process.env.NODE_ENV !== 'production';
+
+const inMemorySessions = new Map<string, ISessionData>();
+
+function getInMemorySession(sessionId: string): ISessionData | null {
+  const session = inMemorySessions.get(sessionId);
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) {
+    inMemorySessions.delete(sessionId);
+    return null;
+  }
+  return session;
+}
 
 // SECURITY: Fail fast if SESSION_SECRET is not set in production
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -134,6 +147,9 @@ export async function createSession(
 
   // Store session in Redis with TTL
   await setKeyWithExpiry(getSessionKey(sessionId), sessionData, ttl);
+  if (USE_IN_MEMORY_SESSIONS) {
+    inMemorySessions.set(sessionId, sessionData);
+  }
 
   console.log(`[SESSION] Created session ${sessionId} for user ${user.id}`);
 
@@ -150,7 +166,14 @@ export async function createSession(
  * @returns The session data or null if not found
  */
 export async function getSession(sessionId: string): Promise<ISessionData | null> {
-  return await getKey<ISessionData>(getSessionKey(sessionId));
+  const session = await getKey<ISessionData>(getSessionKey(sessionId));
+  if (session) {
+    if (USE_IN_MEMORY_SESSIONS) {
+      inMemorySessions.set(sessionId, session);
+    }
+    return session;
+  }
+  return USE_IN_MEMORY_SESSIONS ? getInMemorySession(sessionId) : null;
 }
 
 // ============================================
@@ -246,6 +269,9 @@ export async function refreshSession(sessionId: string): Promise<boolean> {
 
   // Save updated session with new TTL
   await setKeyWithExpiry(getSessionKey(sessionId), session, ttl);
+  if (USE_IN_MEMORY_SESSIONS) {
+    inMemorySessions.set(sessionId, session);
+  }
 
   return true;
 }
@@ -261,6 +287,9 @@ export async function refreshSession(sessionId: string): Promise<boolean> {
  */
 export async function deleteSession(sessionId: string): Promise<boolean> {
   const result = await deleteKey(getSessionKey(sessionId));
+  if (USE_IN_MEMORY_SESSIONS) {
+    inMemorySessions.delete(sessionId);
+  }
   const deleted = result > 0;
 
   if (deleted) {
@@ -313,7 +342,15 @@ export async function deleteUserSessions(
     return 0;
   }
 
-  return await deleteKeys(keys);
+  const deleted = await deleteKeys(keys);
+  if (USE_IN_MEMORY_SESSIONS) {
+    for (const [key, session] of inMemorySessions.entries()) {
+      if (session.userId === userId && session.tenantId === tenantId) {
+        inMemorySessions.delete(key);
+      }
+    }
+  }
+  return deleted;
 }
 
 /**
@@ -335,7 +372,15 @@ async function deleteKeys(keys: string[]): Promise<number> {
  * @returns Remaining TTL in seconds, or -1 if session doesn't exist
  */
 export async function getSessionTTL(sessionId: string): Promise<number> {
-  return await getTTL(getSessionKey(sessionId));
+  try {
+    return await getTTL(getSessionKey(sessionId));
+  } catch {
+    if (!USE_IN_MEMORY_SESSIONS) return -1;
+    const session = getInMemorySession(sessionId);
+    if (!session) return -1;
+    const ttlMs = session.expiresAt - Date.now();
+    return Math.max(0, Math.floor(ttlMs / 1000));
+  }
 }
 
 /**

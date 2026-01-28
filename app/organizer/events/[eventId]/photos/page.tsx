@@ -30,6 +30,7 @@ export default function EventPhotosPage() {
 
   const [photos, setPhotos] = useState<IPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEventLoading, setIsEventLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [event, setEvent] = useState<IEvent | null>(null);
   const [moderationLogs, setModerationLogs] = useState<Array<{
@@ -47,12 +48,32 @@ export default function EventPhotosPage() {
     (searchParams.get('status') as PhotoStatus) || 'all'
   );
   const [isModerator, setIsModerator] = useState(false);
+  const photosCacheRef = useRef<Record<PhotoStatus, IPhoto[]>>({
+    all: [],
+    pending: [],
+    approved: [],
+    rejected: [],
+  });
+  const photosLoadedRef = useRef<Record<PhotoStatus, boolean>>({
+    all: false,
+    pending: false,
+    approved: false,
+    rejected: false,
+  });
 
   // Ref to store the fetchPhotos function
   const fetchPhotosRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
-    const fetchPhotos = async () => {
+    photosCacheRef.current = { all: [], pending: [], approved: [], rejected: [] };
+    photosLoadedRef.current = { all: false, pending: false, approved: false, rejected: false };
+    setPhotos([]);
+    setIsLoading(true);
+    setIsEventLoading(true);
+  }, [eventId]);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
       try {
         const eventResponse = await fetch(`/api/events/${eventId}`, {
           credentials: 'include',
@@ -61,18 +82,30 @@ export default function EventPhotosPage() {
         if (eventResponse.ok) {
           setEvent(eventData.data);
         }
+      } catch (err) {
+        console.error('[PHOTOS_PAGE] Event error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load event');
+      } finally {
+        setIsEventLoading(false);
+      }
+    };
 
-        // Build query params
+    fetchEvent();
+  }, [eventId]);
+
+  useEffect(() => {
+    const fetchPhotos = async (status: PhotoStatus) => {
+      try {
         const queryParams = new URLSearchParams();
-        if (activeStatus !== 'all') {
-          queryParams.append('status', activeStatus);
+        if (status !== 'all') {
+          queryParams.append('status', status);
         }
 
         const response = await fetch(
           `/api/events/${eventId}/photos?${queryParams.toString()}`,
           {
             credentials: 'include',
-            cache: 'no-store', // Prevent caching to ensure fresh data on tab switch
+            cache: 'no-store',
           }
         );
         const data = await response.json();
@@ -81,21 +114,15 @@ export default function EventPhotosPage() {
           throw new Error(data.error || 'Failed to load photos');
         }
 
-        console.log('[PHOTOS_PAGE] Fetched photos:', {
-          activeStatus,
-          queryParams: queryParams.toString(),
-          receivedCount: data.data?.length || 0,
-          statuses: data.data?.map((p: IPhoto) => p.status),
-        });
-
-        setPhotos(data.data);
+        photosCacheRef.current[status] = data.data || [];
+        photosLoadedRef.current[status] = true;
+        setPhotos(data.data || []);
 
         // For now, assume all users accessing this route are moderators
-        // The API should handle authorization properly
         setIsModerator(true);
         setError(null);
       } catch (err) {
-        console.error('[PHOTOS_PAGE] Error:', err);
+        console.error('[PHOTOS_PAGE] Photos error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load photos');
       } finally {
         setIsLoading(false);
@@ -103,8 +130,19 @@ export default function EventPhotosPage() {
     };
 
     // Store the function in ref for use in handlePhotoUpdate
-    fetchPhotosRef.current = fetchPhotos;
-    fetchPhotos();
+    fetchPhotosRef.current = async () => {
+      await fetchPhotos(activeStatus);
+    };
+
+    // Use cached results if available, otherwise fetch
+    const cached = photosCacheRef.current[activeStatus];
+    if (photosLoadedRef.current[activeStatus]) {
+      setPhotos(cached);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+      fetchPhotos(activeStatus);
+    }
   }, [eventId, activeStatus]);
 
   useEffect(() => {
@@ -162,6 +200,11 @@ export default function EventPhotosPage() {
     { id: 'approved' as const, label: 'Approved', icon: CheckCircle },
     { id: 'rejected' as const, label: 'Rejected', icon: XCircle },
   ];
+
+  const getStatusCount = (status: PhotoStatus) => {
+    const cached = photosCacheRef.current[status] || [];
+    return cached.length;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -222,7 +265,7 @@ export default function EventPhotosPage() {
                           : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                       )}
                     >
-                      {photos.filter(p => p.status === tab.id).length}
+                      {getStatusCount(tab.id)}
                     </span>
                   )}
                 </button>
@@ -232,7 +275,7 @@ export default function EventPhotosPage() {
         </div>
 
         {/* Content */}
-        {isLoading ? (
+        {isLoading || isEventLoading ? (
           <div className="flex min-h-[400px] items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
           </div>
@@ -250,68 +293,6 @@ export default function EventPhotosPage() {
             allowDownload
             onPhotoDelete={handlePhotoDelete}
           />
-        )}
-
-        {/* Empty state for specific status */}
-        {!isLoading && !error && photos.length === 0 && activeStatus !== 'all' && (
-          <div className="text-center py-12">
-            <ImageIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <p className="text-gray-500">No {activeStatus} photos</p>
-            <p className="text-sm text-gray-400">
-              Try selecting a different status filter
-            </p>
-          </div>
-        )}
-
-        {/* Moderation Log */}
-        {moderationLogs.length > 0 && (
-          <div className="mt-10 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Moderation Activity
-            </h2>
-            <div className="space-y-3">
-              {moderationLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-700/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-md bg-gray-200 dark:bg-gray-700">
-                      {log.imageUrl ? (
-                        <img
-                          src={log.imageUrl}
-                          alt="Moderated"
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400">
-                          <ImageIcon className="h-5 w-5" />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {log.action.toUpperCase()}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {log.moderatorName || log.moderatorEmail}
-                        {log.photoStatus ? ` • ${log.photoStatus}` : ''}
-                      </div>
-                      {log.reason && (
-                        <div className="text-xs text-gray-600 dark:text-gray-300">
-                          Reason: {log.reason}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         )}
       </div>
     </div>

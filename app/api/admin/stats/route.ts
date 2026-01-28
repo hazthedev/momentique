@@ -7,6 +7,11 @@ import { requireSuperAdmin } from '@/middleware/auth';
 import { getTenantDb } from '@/lib/db';
 
 const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
+const isMissingTableError = (error: unknown) =>
+    (error as { code?: string })?.code === '42P01';
+const isDatabaseError = (error: unknown) =>
+    Boolean((error as { code?: string })?.code) ||
+    (error instanceof Error && /ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENOTFOUND/i.test(error.message));
 
 export async function GET(request: NextRequest) {
     try {
@@ -18,36 +23,56 @@ export async function GET(request: NextRequest) {
 
         const db = getTenantDb(SYSTEM_TENANT_ID);
 
-        // Get counts from database
-        const [usersResult, eventsResult, photosResult, tenantsResult] = await Promise.all([
-            db.query('SELECT COUNT(*) as count FROM users'),
-            db.query('SELECT COUNT(*) as count FROM events'),
-            db.query('SELECT COUNT(*) as count FROM photos'),
-            db.query('SELECT COUNT(*) as count FROM tenants'),
+        const safeCount = async (query: string) => {
+            try {
+                const result = await db.query(query);
+                return Number(result.rows[0]?.count || 0);
+            } catch (error) {
+                if (isMissingTableError(error)) return 0;
+                throw error;
+            }
+        };
+
+        const [
+            totalUsers,
+            totalEvents,
+            totalPhotos,
+            totalTenants,
+            activeEvents,
+            recentUsers,
+        ] = await Promise.all([
+            safeCount('SELECT COUNT(*) as count FROM users'),
+            safeCount('SELECT COUNT(*) as count FROM events'),
+            safeCount('SELECT COUNT(*) as count FROM photos'),
+            safeCount('SELECT COUNT(*) as count FROM tenants'),
+            safeCount("SELECT COUNT(*) as count FROM events WHERE status = 'active'"),
+            safeCount("SELECT COUNT(*) as count FROM users WHERE created_at > NOW() - INTERVAL '7 days'"),
         ]);
-
-        // Get active events count
-        const activeEventsResult = await db.query(
-            "SELECT COUNT(*) as count FROM events WHERE status = 'active'"
-        );
-
-        // Get recent users (last 7 days)
-        const recentUsersResult = await db.query(
-            "SELECT COUNT(*) as count FROM users WHERE created_at > NOW() - INTERVAL '7 days'"
-        );
 
         return NextResponse.json({
             data: {
-                totalUsers: Number(usersResult.rows[0]?.count || 0),
-                totalEvents: Number(eventsResult.rows[0]?.count || 0),
-                totalPhotos: Number(photosResult.rows[0]?.count || 0),
-                totalTenants: Number(tenantsResult.rows[0]?.count || 0),
-                activeEvents: Number(activeEventsResult.rows[0]?.count || 0),
-                recentUsers: Number(recentUsersResult.rows[0]?.count || 0),
+                totalUsers,
+                totalEvents,
+                totalPhotos,
+                totalTenants,
+                activeEvents,
+                recentUsers,
             },
         });
     } catch (error) {
         console.error('[SUPERVISOR_STATS] Error:', error);
+        if (isDatabaseError(error)) {
+            return NextResponse.json({
+                data: {
+                    totalUsers: 0,
+                    totalEvents: 0,
+                    totalPhotos: 0,
+                    totalTenants: 0,
+                    activeEvents: 0,
+                    recentUsers: 0,
+                },
+            });
+        }
         return NextResponse.json(
             { error: 'Failed to fetch stats', code: 'INTERNAL_ERROR' },
             { status: 500 }

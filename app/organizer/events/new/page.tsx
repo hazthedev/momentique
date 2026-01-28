@@ -35,7 +35,6 @@ export default function NewEventPage() {
             onSuccess={(event) => {
               // Redirect is handled in the form component
               toast.success('Event created successfully');
-              window.location.href = `/events/${event.id}`;
             }}
           />
         </div>

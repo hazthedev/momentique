@@ -8,6 +8,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import Lightbox from 'yet-another-react-lightbox';
+import { Check, Heart, X } from 'lucide-react';
+import { toast } from 'sonner';
 import type { IPhoto } from '@/lib/types';
 
 // ============================================
@@ -94,6 +96,7 @@ export function PhotoGallery({
       if (!isModerator) return;
 
       try {
+        const toastId = toast.loading('Approving photo...');
         const response = await fetch(`/api/photos/${photoId}/approve`, {
           method: 'PATCH',
         });
@@ -107,9 +110,14 @@ export function PhotoGallery({
           );
           // Notify parent to update its state and refetch if needed
           onPhotoUpdate?.(photoId, 'approved');
+          toast.success('Photo approved', { id: toastId });
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.error || 'Failed to approve photo', { id: toastId });
         }
       } catch (error) {
         console.error('[Gallery] Error approving photo:', error);
+        toast.error('Failed to approve photo');
       }
     },
     [isModerator, onPhotoUpdate]
@@ -120,6 +128,7 @@ export function PhotoGallery({
       if (!isModerator) return;
 
       try {
+        const toastId = toast.loading('Rejecting photo...');
         const response = await fetch(`/api/photos/${photoId}/reject`, {
           method: 'PATCH',
         });
@@ -133,9 +142,14 @@ export function PhotoGallery({
           );
           // Notify parent to update its state and refetch if needed
           onPhotoUpdate?.(photoId, 'rejected');
+          toast.success('Photo rejected', { id: toastId });
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.error || 'Failed to reject photo', { id: toastId });
         }
       } catch (error) {
         console.error('[Gallery] Error rejecting photo:', error);
+        toast.error('Failed to reject photo');
       }
     },
     [isModerator, onPhotoUpdate]
@@ -207,14 +221,14 @@ export function PhotoGallery({
   return (
     <div className="w-full">
       {/* Gallery Grid */}
-      <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {photos.map((photo, index) => {
           const photoReactions = photo.reactions;
 
           return (
             <div
               key={photo.id}
-              className="group relative mb-4 overflow-hidden rounded-lg bg-white shadow-md hover:shadow-xl transition-shadow duration-200"
+              className="group relative overflow-hidden rounded-lg bg-white shadow-md hover:shadow-xl transition-shadow duration-200"
               onClick={() => openLightbox(index)}
             >
               {/* Image */}
@@ -230,7 +244,7 @@ export function PhotoGallery({
               </div>
 
               {/* Download button */}
-              {allowDownload && (
+              {allowDownload && !isModerator && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -258,18 +272,26 @@ export function PhotoGallery({
               )}
 
               {/* Overlay on hover */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div
+                className={
+                  isModerator
+                    ? "absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    : "absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                }
+              >
                 <div className="p-4 text-white">
-                  {/* Love reaction - only this reaction */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleReaction(photo.id);
-                    }}
-                    className="flex items-center gap-2 cursor-pointer hover:scale-110 transition-transform"
-                  >
-                    ❤️ <span className="font-semibold">{photoReactions.heart || 0}</span>
-                  </button>
+                  {!isModerator && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReaction(photo.id);
+                      }}
+                      className="flex items-center gap-2 cursor-pointer hover:scale-110 transition-transform"
+                    >
+                      <Heart className="h-4 w-4 text-pink-300" />
+                      <span className="font-semibold">{photoReactions.heart || 0}</span>
+                    </button>
+                  )}
 
                   {photo.caption && (
                     <p className="mt-2 text-sm line-clamp-2">{photo.caption}</p>
@@ -280,43 +302,64 @@ export function PhotoGallery({
                   )}
 
                   {isModerator && photo.status === 'pending' && (
-                    <div className="mt-2 flex gap-2">
+                    <div className="absolute bottom-2 left-2 flex gap-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleApprove(photo.id);
                         }}
-                        className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-green-600 text-white shadow-sm hover:bg-green-700"
+                        title="Approve photo"
                       >
-                        ✓ Approve
+                        <span className="sr-only">Approve photo</span>
+                        <Check className="h-4 w-4" />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleReject(photo.id);
                         }}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
+                        title="Reject photo"
                       >
-                        ✕ Reject
+                        <span className="sr-only">Reject photo</span>
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   )}
 
-                  {isModerator && (
-                    <div className="mt-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(photo);
-                        }}
-                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
+                  
                 </div>
               </div>
+
+              {isModerator && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(photo);
+                  }}
+                  className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
+                  title="Delete photo"
+                >
+                  <span className="sr-only">Delete photo</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                  </svg>
+                </button>
+              )}
 
               {/* Status badge */}
               {photo.status === 'pending' && (

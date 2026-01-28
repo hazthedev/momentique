@@ -12,8 +12,8 @@ import type { ITenant } from './types';
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  min: parseInt(process.env.DATABASE_POOL_MIN || '2', 10),
-  max: parseInt(process.env.DATABASE_POOL_MAX || '20', 10),
+  min: parseInt(process.env.DATABASE_POOL_MIN || '0', 10),
+  max: parseInt(process.env.DATABASE_POOL_MAX || '5', 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 };

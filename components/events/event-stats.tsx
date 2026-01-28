@@ -185,55 +185,6 @@ export function EventStats({ eventId, refreshInterval = 30000, className }: Even
         </div>
       </div>
 
-      {/* Upload Timeline Chart */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Upload Timeline (Last 7 Days)
-        </h3>
-        <div className="flex items-end justify-between gap-2">
-          {stats.uploadTimeline.map((item, index) => {
-            const height = (item.count / maxTimelineCount) * 100;
-            const isToday = index === stats.uploadTimeline.length - 1;
-
-            return (
-              <div key={item.date} className="flex flex-1 flex-col items-center gap-2">
-                <div className="relative w-full">
-                  <div
-                    className={clsx(
-                      'w-full rounded-t-lg transition-all duration-300',
-                      isToday
-                        ? 'bg-gradient-to-t from-violet-600 to-pink-600'
-                        : 'bg-violet-200 dark:bg-violet-800'
-                    )}
-                    style={{ height: `${Math.max(height, 4)}%` }}
-                  />
-                  {item.count > 0 && (
-                    <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                      {item.count}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className={clsx(
-                    'text-xs',
-                    isToday
-                      ? 'font-semibold text-violet-600 dark:text-violet-400'
-                      : 'text-gray-500 dark:text-gray-500'
-                  )}
-                >
-                  {formatDate(item.date)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        {stats.uploadTimeline.every(d => d.count === 0) && (
-          <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-            No uploads yet
-          </p>
-        )}
-      </div>
-
       {/* Top Contributors */}
       {stats.topContributors.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
