@@ -12,6 +12,8 @@ import {
   getEventEntries,
 } from '@/lib/lucky-draw';
 
+export const runtime = 'nodejs';
+
 // ============================================
 // GET /api/events/:eventId/lucky-draw/config - Get active config
 // ============================================

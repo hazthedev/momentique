@@ -13,6 +13,8 @@ import {
 import { extractSessionId, validateSession } from '@/lib/session';
 import { verifyAccessToken } from '@/lib/auth';
 
+export const runtime = 'nodejs';
+
 // ============================================
 // POST /api/events/:eventId/lucky-draw/draw - Execute draw
 // ============================================

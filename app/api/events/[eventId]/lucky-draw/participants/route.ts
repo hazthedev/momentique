@@ -7,6 +7,8 @@ import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
 import { getActiveConfig, getEventEntries } from '@/lib/lucky-draw';
 
+export const runtime = 'nodejs';
+
 // ============================================
 // GET /api/events/:eventId/lucky-draw/participants - List participants
 // ============================================

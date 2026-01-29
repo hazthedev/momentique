@@ -9,6 +9,8 @@ import { verifyAccessToken } from '@/lib/auth';
 import { createManualEntries, getActiveConfig, getEventEntries } from '@/lib/lucky-draw';
 import { extractSessionId, validateSession } from '@/lib/session';
 
+export const runtime = 'nodejs';
+
 // ============================================
 // GET /api/events/:eventId/lucky-draw/entries - List entries
 // ============================================

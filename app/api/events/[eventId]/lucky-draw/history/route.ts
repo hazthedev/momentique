@@ -7,6 +7,8 @@ import { getTenantId } from '@/lib/tenant';
 import { getTenantDb } from '@/lib/db';
 import type { Winner } from '@/lib/types';
 
+export const runtime = 'nodejs';
+
 // ============================================
 // GET /api/events/:eventId/lucky-draw/history - Get draw history
 // ============================================
