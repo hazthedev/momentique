@@ -550,6 +550,9 @@ export default function GuestEventPage() {
     if (selectedPhotoIds.size === 0) return;
     const photoIds = Array.from(selectedPhotoIds);
 
+    // Pre-fetch all photos first to minimize delays between downloads
+    const downloads: Array<{ blob: Blob; filename: string }> = [];
+
     for (const photoId of photoIds) {
       try {
         const response = await fetch(`/api/photos/${photoId}/download?format=png`);
@@ -557,23 +560,36 @@ export default function GuestEventPage() {
           throw new Error('Download failed');
         }
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.rel = 'noopener';
         const contentDisposition = response.headers.get('content-disposition') || '';
         const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
-        a.download = filenameMatch ? filenameMatch[1] : `photo-${photoId}.png`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        }, 2000);
-        await new Promise((resolve) => setTimeout(resolve, 600));
+        const filename = filenameMatch ? filenameMatch[1] : `photo-${photoId}.png`;
+        downloads.push({ blob, filename });
       } catch (err) {
         console.error('[GUEST_EVENT] Individual download error:', err);
       }
+    }
+
+    // Trigger downloads with proper timing
+    for (let i = 0; i < downloads.length; i++) {
+      const { blob, filename } = downloads[i];
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.rel = 'noopener';
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+
+      // Use a longer delay to ensure browser processes each download
+      setTimeout(() => {
+        a.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          if (document.body.contains(a)) {
+            document.body.removeChild(a);
+          }
+        }, 100);
+      }, i * 1000);
     }
   };
 
@@ -1035,23 +1051,25 @@ export default function GuestEventPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/80">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1">
               <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {event.name}
               </h1>
-              {event.custom_hashtag && (
-                <p className="text-sm text-violet-600 dark:text-violet-400">
-                  #{event.custom_hashtag}
-                </p>
-              )}
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {event.custom_hashtag && (
+                  <span className="text-violet-600 dark:text-violet-400">
+                    #{event.custom_hashtag}
+                  </span>
+                )}
+                {(guestName || isAnonymous) && (
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Hi, {isAnonymous ? 'Anonymous' : guestName}!
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {(guestName || isAnonymous) && (
-                <span className="hidden sm:block text-sm text-gray-600 dark:text-gray-400">
-                  Hi, {isAnonymous ? 'Anonymous' : guestName}!
-                </span>
-              )}
+            <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
               {canDownload && (
                 <>
                   {selectedCount > 0 && (
@@ -1089,7 +1107,7 @@ export default function GuestEventPage() {
               </button>
               <button
                 onClick={handleShare}
-                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-pink-600 px-4 py-2 text-sm font-medium text-white hover:from-violet-700 hover:to-pink-700"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-pink-600 px-4 py-2 text-sm font-medium text-white hover:from-violet-700 hover:to-pink-700 sm:w-auto"
               >
                 <Share2 className="h-4 w-4" />
                 Share
