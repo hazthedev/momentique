@@ -42,6 +42,7 @@ interface SelectedFile {
 }
 
 const GUEST_MAX_DIMENSION = 4000;
+const PHOTO_PAGE_SIZE = 5;
 const PHOTO_CARD_STYLE_CLASSES: Record<string, string> = {
   vacation: 'rounded-2xl bg-white shadow-[0_12px_24px_rgba(0,0,0,0.12)] ring-1 ring-black/5',
   brutalist: 'rounded-none bg-white border-2 border-black shadow-[6px_6px_0_#000]',
@@ -259,7 +260,12 @@ export default function GuestEventPage() {
 
   const [resolvedEventId, setResolvedEventId] = useState<string | null>(null);
   const [event, setEvent] = useState<IEvent | null>(null);
-  const [photos, setPhotos] = useState<IPhoto[]>([]);
+  const [approvedPhotos, setApprovedPhotos] = useState<IPhoto[]>([]);
+  const [pendingPhotos, setPendingPhotos] = useState<IPhoto[]>([]);
+  const [rejectedPhotos, setRejectedPhotos] = useState<IPhoto[]>([]);
+  const [approvedTotal, setApprovedTotal] = useState<number | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreApproved, setHasMoreApproved] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -283,6 +289,12 @@ export default function GuestEventPage() {
   const [showWinnerOverlay, setShowWinnerOverlay] = useState(false);
   const pendingIdsRef = useRef<Set<string>>(new Set());
   const rejectedIdsRef = useRef<Set<string>>(new Set());
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  const mergedPhotos = useMemo(
+    () => mergePhotos(approvedPhotos, pendingPhotos, rejectedPhotos),
+    [approvedPhotos, pendingPhotos, rejectedPhotos]
+  );
 
   // Guest name state (persisted)
   const [guestName, setGuestName] = useState<string>('');
@@ -380,6 +392,12 @@ export default function GuestEventPage() {
     setUserLoves(loves);
   };
 
+  const updatePhotoById = useCallback((photoId: string, updater: (photo: IPhoto) => IPhoto) => {
+    setApprovedPhotos((prev) => prev.map((photo) => (photo.id === photoId ? updater(photo) : photo)));
+    setPendingPhotos((prev) => prev.map((photo) => (photo.id === photoId ? updater(photo) : photo)));
+    setRejectedPhotos((prev) => prev.map((photo) => (photo.id === photoId ? updater(photo) : photo)));
+  }, []);
+
   useEffect(() => {
     if (isDrawing) {
       setShowDrawOverlay(true);
@@ -409,12 +427,12 @@ export default function GuestEventPage() {
       setSelectedPhotoIds(new Set());
       return;
     }
-    const approvedIds = new Set(photos.filter((photo) => photo.status === 'approved').map((photo) => photo.id));
+    const approvedIds = new Set(mergedPhotos.filter((photo) => photo.status === 'approved').map((photo) => photo.id));
     setSelectedPhotoIds((prev) => {
       const next = new Set(Array.from(prev).filter((id) => approvedIds.has(id)));
       return next;
     });
-  }, [canDownload, photos]);
+  }, [canDownload, mergedPhotos]);
 
   // Handle love reaction on double-click with heart burst animation
   const handleLoveReaction = async (photoId: string) => {
@@ -464,20 +482,13 @@ export default function GuestEventPage() {
           saveUserLoves({ ...userLoves, [photoId]: newUserCount });
 
           // Update photo in state
-          setPhotos(prev =>
-            prev.map(p => {
-              if (p.id === photoId) {
-                return {
-                  ...p,
-                  reactions: {
-                    ...p.reactions,
-                    heart: data.data?.count ?? (p.reactions.heart || 0) + 1,
-                  },
-                };
-              }
-              return p;
-            })
-          );
+          updatePhotoById(photoId, (photo) => ({
+            ...photo,
+            reactions: {
+              ...photo.reactions,
+              heart: data.data?.count ?? (photo.reactions.heart || 0) + 1,
+            },
+          }));
         }
       }
     } catch (err) {
@@ -651,7 +662,10 @@ export default function GuestEventPage() {
         }
 
         // Fetch photos (approved for everyone, plus own pending/rejected if moderation enabled)
-        const approvedResponse = await fetch(`/api/events/${actualEventId}/photos?status=approved`, { headers });
+        const approvedResponse = await fetch(
+          `/api/events/${actualEventId}/photos?status=approved&limit=${PHOTO_PAGE_SIZE}&offset=0`,
+          { headers }
+        );
         const approvedData = await approvedResponse.json();
 
         let pendingData: { data?: IPhoto[] } = {};
@@ -668,14 +682,18 @@ export default function GuestEventPage() {
         }
 
         if (approvedResponse.ok) {
-          const merged = mergePhotos(
-            approvedData.data || [],
-            pendingData.data || [],
-            rejectedData.data || []
-          );
-          setPhotos(merged);
-          pendingIdsRef.current = new Set((pendingData.data || []).map((p) => p.id));
-          rejectedIdsRef.current = new Set((rejectedData.data || []).map((p) => p.id));
+          const approvedList = approvedData.data || [];
+          const pendingList = pendingData.data || [];
+          const rejectedList = rejectedData.data || [];
+          const nextTotal = approvedData.pagination?.total ?? approvedList.length;
+
+          setApprovedPhotos(approvedList);
+          setPendingPhotos(pendingList);
+          setRejectedPhotos(rejectedList);
+          setApprovedTotal(nextTotal);
+          setHasMoreApproved(approvedList.length < nextTotal);
+          pendingIdsRef.current = new Set(pendingList.map((p) => p.id));
+          rejectedIdsRef.current = new Set(rejectedList.map((p) => p.id));
         }
 
         setError(null);
@@ -689,6 +707,60 @@ export default function GuestEventPage() {
 
     fetchEventData();
   }, [eventId]);
+
+  const loadMoreApproved = useCallback(async () => {
+    if (!resolvedEventId || isLoadingMore || !hasMoreApproved) return;
+    setIsLoadingMore(true);
+    try {
+      const headers: Record<string, string> = {};
+      if (fingerprint) {
+        headers['x-fingerprint'] = fingerprint;
+      }
+      const offset = approvedPhotos.length;
+      const response = await fetch(
+        `/api/events/${resolvedEventId}/photos?status=approved&limit=${PHOTO_PAGE_SIZE}&offset=${offset}`,
+        { headers }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load more photos');
+      }
+
+      const incoming = data.data || [];
+      const nextTotal = data.pagination?.total ?? approvedTotal ?? offset + incoming.length;
+      setApprovedTotal(nextTotal);
+      setApprovedPhotos((prev) => {
+        const existingIds = new Set(prev.map((photo) => photo.id));
+        const deduped = incoming.filter((photo: IPhoto) => !existingIds.has(photo.id));
+        return deduped.length > 0 ? [...prev, ...deduped] : prev;
+      });
+      const nextCount = offset + incoming.length;
+      setHasMoreApproved(nextCount < nextTotal);
+    } catch (err) {
+      console.error('[GUEST_EVENT] Load more photos error:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [resolvedEventId, isLoadingMore, hasMoreApproved, fingerprint, approvedPhotos.length, approvedTotal]);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasMoreApproved) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMoreApproved();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [loadMoreApproved, hasMoreApproved]);
+
+  useEffect(() => {
+    if (approvedTotal === null) return;
+    setHasMoreApproved(approvedPhotos.length < approvedTotal);
+  }, [approvedPhotos.length, approvedTotal]);
 
   useEffect(() => {
     if (!resolvedEventId || !fingerprint || !moderationRequired) return;
@@ -739,20 +811,23 @@ export default function GuestEventPage() {
           setModerationNotice('Your photo was rejected.');
         }
 
-        setPhotos((prev) =>
-          prev.map((photo) => {
-            if (nextRejected.has(photo.id)) {
-              return { ...photo, status: 'rejected' };
-            }
-            if (nextPending.has(photo.id)) {
-              return { ...photo, status: 'pending' };
-            }
-            if (photo.status === 'pending' && !nextPending.has(photo.id) && !nextRejected.has(photo.id)) {
-              return { ...photo, status: 'approved' };
-            }
-            return photo;
-          })
-        );
+        let newlyApprovedPhotos: IPhoto[] = [];
+        setPendingPhotos((prev) => {
+          newlyApprovedPhotos = prev
+            .filter((photo) => newlyApproved.includes(photo.id))
+            .map((photo) => ({ ...photo, status: 'approved' }));
+          return pendingJson.data || [];
+        });
+        setRejectedPhotos(rejectedJson.data || []);
+
+        if (newlyApprovedPhotos.length > 0) {
+          setApprovedPhotos((prev) => {
+            const existingIds = new Set(prev.map((photo) => photo.id));
+            const additions = newlyApprovedPhotos.filter((photo) => !existingIds.has(photo.id));
+            return additions.length > 0 ? [...additions, ...prev] : prev;
+          });
+          setApprovedTotal((prev) => (prev === null ? prev : prev + newlyApprovedPhotos.length));
+        }
       } catch (err) {
         console.error('[GUEST_EVENT] Moderation poll error:', err);
       }
@@ -887,7 +962,19 @@ export default function GuestEventPage() {
 
       // Add the new photo(s) to the gallery
       const uploadedPhotos = Array.isArray(data.data) ? data.data : [data.data];
-      setPhotos((prev) => [...uploadedPhotos, ...prev]);
+      const nextApproved = uploadedPhotos.filter((photo: IPhoto) => photo.status === 'approved');
+      const nextPending = uploadedPhotos.filter((photo: IPhoto) => photo.status === 'pending');
+      const nextRejected = uploadedPhotos.filter((photo: IPhoto) => photo.status === 'rejected');
+      if (nextApproved.length > 0) {
+        setApprovedPhotos((prev) => [...nextApproved, ...prev]);
+        setApprovedTotal((prev) => (prev === null ? prev : prev + nextApproved.length));
+      }
+      if (nextPending.length > 0) {
+        setPendingPhotos((prev) => [...nextPending, ...prev]);
+      }
+      if (nextRejected.length > 0) {
+        setRejectedPhotos((prev) => [...nextRejected, ...prev]);
+      }
       const hasPending = uploadedPhotos.some((photo: IPhoto) => photo.status === 'pending');
       if (hasPending) {
         setUploadSuccessMessage('Photo uploaded and pending approval.');
@@ -1153,7 +1240,7 @@ export default function GuestEventPage() {
               <ImageIcon className="mt-1 h-5 w-5 flex-shrink-0 text-violet-600 dark:text-violet-400" />
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Photos</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{photos.length}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{mergedPhotos.length}</p>
               </div>
             </div>
           </div>
@@ -1202,7 +1289,7 @@ export default function GuestEventPage() {
           <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-gray-100">
             Event Photos
           </h2>
-          {photos.length === 0 ? (
+          {mergedPhotos.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center dark:border-gray-600 dark:bg-gray-800">
               <ImageIcon className="mx-auto mb-4 h-16 w-16 text-gray-400" />
               <p className="text-gray-600 dark:text-gray-400">No photos yet</p>
@@ -1211,127 +1298,147 @@ export default function GuestEventPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {photos.map((photo) => {
-                const userLoveCount = userLoves[photo.id] || 0;
-                const totalHeartCount = photo.reactions?.heart || 0;
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {mergedPhotos.map((photo) => {
+                  const userLoveCount = userLoves[photo.id] || 0;
+                  const totalHeartCount = photo.reactions?.heart || 0;
 
-                return (
-                  <div
-                    key={photo.id}
-                    onDoubleClick={() => {
-                      if (photo.status !== 'approved') return;
-                      handleLoveReaction(photo.id);
-                    }}
-                    className={clsx(
-                      'group relative aspect-square overflow-hidden cursor-pointer',
-                      PHOTO_CARD_STYLE_CLASSES[photoCardStyle] || PHOTO_CARD_STYLE_CLASSES.vacation,
-                      canDownload && selectedPhotoIds.has(photo.id) && 'ring-2 ring-violet-500'
-                    )}
-                  >
-                    <Image
-                      src={photo.images.medium_url || photo.images.full_url}
-                      alt={photo.caption || 'Event photo'}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                      className="object-cover"
-                    />
+                  return (
+                    <div
+                      key={photo.id}
+                      onDoubleClick={() => {
+                        if (photo.status !== 'approved') return;
+                        handleLoveReaction(photo.id);
+                      }}
+                      className={clsx(
+                        'group relative aspect-square overflow-hidden cursor-pointer',
+                        PHOTO_CARD_STYLE_CLASSES[photoCardStyle] || PHOTO_CARD_STYLE_CLASSES.vacation,
+                        canDownload && selectedPhotoIds.has(photo.id) && 'ring-2 ring-violet-500'
+                      )}
+                    >
+                      <Image
+                        src={photo.images.medium_url || photo.images.full_url}
+                        alt={photo.caption || 'Event photo'}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                        className="object-cover"
+                      />
 
-                    {/* Download button */}
-                    {canDownload && photo.status === 'approved' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadPhoto(photo);
-                        }}
-                        className="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
-                        title="Download photo"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                    )}
+                      {/* Download button */}
+                      {canDownload && photo.status === 'approved' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadPhoto(photo);
+                          }}
+                          className="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                          title="Download photo"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                      )}
 
-                    {/* Select checkbox */}
-                    {canDownload && photo.status === 'approved' && (
-                      <label
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute bottom-2 left-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedPhotoIds.has(photo.id)}
-                          onChange={() => toggleSelectedPhoto(photo.id)}
-                          className="h-4 w-4 rounded border-white text-violet-600 focus:ring-violet-500"
-                        />
-                      </label>
-                    )}
+                      {/* Select checkbox */}
+                      {canDownload && photo.status === 'approved' && (
+                        <label
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute bottom-2 left-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedPhotoIds.has(photo.id)}
+                            onChange={() => toggleSelectedPhoto(photo.id)}
+                            className="h-4 w-4 rounded border-white text-violet-600 focus:ring-violet-500"
+                          />
+                        </label>
+                      )}
 
-                    {(photo.status === 'pending' || photo.status === 'rejected') && (
-                      <div className={clsx(
-                        'absolute inset-0 z-10 flex items-center justify-center text-center text-xs font-semibold uppercase tracking-wide',
-                        photo.status === 'pending'
-                          ? 'bg-black/55 text-yellow-100'
-                          : 'bg-black/70 text-red-100'
-                      )}>
-                        <span className="rounded-full bg-black/40 px-3 py-1">
-                          {photo.status === 'pending' ? 'Pending approval' : 'Rejected'}
-                        </span>
+                      {(photo.status === 'pending' || photo.status === 'rejected') && (
+                        <div className={clsx(
+                          'absolute inset-0 z-10 flex items-center justify-center text-center text-xs font-semibold uppercase tracking-wide',
+                          photo.status === 'pending'
+                            ? 'bg-black/55 text-yellow-100'
+                            : 'bg-black/70 text-red-100'
+                        )}>
+                          <span className="rounded-full bg-black/40 px-3 py-1">
+                            {photo.status === 'pending' ? 'Pending approval' : 'Rejected'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Love Icon at Top Right (when user has loved) */}
+                      {userLoveCount > 0 && (
+                        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-pink-500 px-2 py-1 shadow-lg">
+                          <Heart className="h-4 w-4 fill-white text-white" />
+                          <span className="text-xs font-bold text-white">{userLoveCount}</span>
+                        </div>
+                      )}
+
+                      {/* Total Heart Count Badge */}
+                      {totalHeartCount > 0 && (
+                        <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 backdrop-blur-sm">
+                          <Heart className={clsx(
+                            "h-3.5 w-3.5",
+                            userLoveCount > 0 ? "fill-pink-500 text-pink-500" : "fill-white text-white"
+                          )} />
+                          <span className="text-xs font-medium text-white">{totalHeartCount}</span>
+                        </div>
+                      )}
+
+                      {/* Overlay on hover */}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-0 left-0 right-0 p-2 text-white">
+                          {photo.caption && (
+                            <p className="text-xs line-clamp-2">{photo.caption}</p>
+                          )}
+                          {!photo.is_anonymous && photo.contributor_name && (
+                            <p className="text-xs opacity-75">- {photo.contributor_name}</p>
+                          )}
+                        </div>
                       </div>
-                    )}
 
-                    {/* Love Icon at Top Right (when user has loved) */}
-                    {userLoveCount > 0 && (
-                      <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-pink-500 px-2 py-1 shadow-lg">
-                        <Heart className="h-4 w-4 fill-white text-white" />
-                        <span className="text-xs font-bold text-white">{userLoveCount}</span>
-                      </div>
-                    )}
+                      {/* Heart Burst Animation (on double-click) */}
+                      {animatingPhotos.has(photo.id) && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                          <Heart
+                            className="h-20 w-20 fill-pink-500 text-pink-500 drop-shadow-lg animate-[heartBurst_0.8s_ease-out_forwards]"
+                          />
+                        </div>
+                      )}
 
-                    {/* Total Heart Count Badge */}
-                    {totalHeartCount > 0 && (
-                      <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 backdrop-blur-sm">
-                        <Heart className={clsx(
-                          "h-3.5 w-3.5",
-                          userLoveCount > 0 ? "fill-pink-500 text-pink-500" : "fill-white text-white"
-                        )} />
-                        <span className="text-xs font-medium text-white">{totalHeartCount}</span>
-                      </div>
-                    )}
-
-                    {/* Overlay on hover */}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-0 left-0 right-0 p-2 text-white">
-                        {photo.caption && (
-                          <p className="text-xs line-clamp-2">{photo.caption}</p>
-                        )}
-                        {!photo.is_anonymous && photo.contributor_name && (
-                          <p className="text-xs opacity-75">- {photo.contributor_name}</p>
-                        )}
-                      </div>
+                      {/* Double-click hint overlay (only on hover, hidden during animation) */}
+                      {!animatingPhotos.has(photo.id) && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                          <Heart className="h-12 w-12 text-white opacity-80" />
+                          {userLoveCount >= 10 && (
+                            <span className="absolute bottom-12 text-xs text-white bg-black/50 px-2 py-1 rounded">Max reached</span>
+                          )}
+                        </div>
+                      )}
                     </div>
-
-                    {/* Heart Burst Animation (on double-click) */}
-                    {animatingPhotos.has(photo.id) && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                        <Heart
-                          className="h-20 w-20 fill-pink-500 text-pink-500 drop-shadow-lg animate-[heartBurst_0.8s_ease-out_forwards]"
-                        />
-                      </div>
-                    )}
-
-                    {/* Double-click hint overlay (only on hover, hidden during animation) */}
-                    {!animatingPhotos.has(photo.id) && (
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-                        <Heart className="h-12 w-12 text-white opacity-80" />
-                        {userLoveCount >= 10 && (
-                          <span className="absolute bottom-12 text-xs text-white bg-black/50 px-2 py-1 rounded">Max reached</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              <div className="mt-6 flex items-center justify-center">
+                {hasMoreApproved && (
+                  isLoadingMore ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading more photos...
+                    </div>
+                  ) : (
+                    <button
+                      onClick={loadMoreApproved}
+                      className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      Load 5 more
+                    </button>
+                  )
+                )}
+              </div>
+              <div ref={loadMoreRef} className="h-1" />
+            </>
           )}
         </div>
       </div>

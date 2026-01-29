@@ -50,6 +50,7 @@ export default function EventPhotosPage() {
   const [isModerator, setIsModerator] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const photosCacheRef = useRef<Record<PhotoStatus, IPhoto[]>>({
     all: [],
     pending: [],
@@ -237,6 +238,42 @@ export default function EventPhotosPage() {
     }
   };
 
+  const handleDeleteSelected = async () => {
+    if (!selectedPhotoIds.length) return;
+    const confirmed = window.confirm(`Delete ${selectedPhotoIds.length} photo(s)? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/events/${eventId}/photos/bulk-delete`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoIds: selectedPhotoIds }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete photos');
+      }
+
+      const deletedIds = data?.data?.deletedIds || [];
+      if (deletedIds.length > 0) {
+        setPhotos((prev) => prev.filter((photo) => !deletedIds.includes(photo.id)));
+      }
+
+      setSelectedPhotoIds([]);
+      photosCacheRef.current = { all: [], pending: [], approved: [], rejected: [] };
+      photosLoadedRef.current = { all: false, pending: false, approved: false, rejected: false };
+      fetchPhotosRef.current?.();
+    } catch (err) {
+      console.error('[PHOTOS_PAGE] Bulk delete error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete photos');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSelectAll = () => {
     setSelectedPhotoIds(photos.map((photo) => photo.id));
   };
@@ -358,6 +395,13 @@ export default function EventPhotosPage() {
                 disabled={!selectedPhotoIds.length || isExporting}
               >
                 {isExporting ? 'Preparing ZIP...' : `Download selected (${selectedPhotoIds.length})`}
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                disabled={!selectedPhotoIds.length || isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : `Delete selected (${selectedPhotoIds.length})`}
               </button>
             </div>
             <PhotoGallery
