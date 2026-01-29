@@ -472,7 +472,10 @@ export async function POST(
 
     for (const file of uploadFiles) {
       // Get tier-based validation options
-      const validationOptions = getTierValidationOptions(subscriptionTier);
+      const validationOptions = {
+        ...getTierValidationOptions(subscriptionTier),
+        allowOversize: !uploadUserId,
+      };
 
       // Use comprehensive validation with magic byte check
       const validation = await validateUploadedImage(file, validationOptions);

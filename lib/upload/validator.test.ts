@@ -226,6 +226,17 @@ async function runAllTests() {
     return { pass: true, details: 'Correctly rejected for exceeding width limit' };
   });
 
+  await runTest('Allow oversize when flag set', async () => {
+    const buffer = await createTestImage('wide-allow.jpg', 5000, 300, 'jpeg');
+    const result = await validateUploadedImage(buffer, {
+      maxWidth: 4000,
+      maxHeight: 4000,
+      allowOversize: true,
+    });
+    if (!result.valid) return { pass: false, message: `Oversize image rejected: ${result.code}` };
+    return { pass: true, details: 'Oversize accepted with allowOversize flag' };
+  });
+
   await runTest('Image below minimum dimensions', async () => {
     const buffer = await createTestImage('tiny.jpg', 5, 5, 'jpeg');
     const result = await validateUploadedImage(buffer);

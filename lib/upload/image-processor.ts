@@ -50,6 +50,7 @@ export interface ProcessingOptions {
   mediumSize?: number;
   fullSize?: number;
   thumbnailFit?: 'cover' | 'fill' | 'inside' | 'outside';
+  allowOversize?: boolean;
 }
 
 export interface ProcessingError {
@@ -74,6 +75,7 @@ const DEFAULT_OPTIONS: Required<ProcessingOptions> = {
   mediumSize: 800,
   fullSize: 1920,
   thumbnailFit: 'cover',
+  allowOversize: false,
 };
 
 // Tier-based processing limits
@@ -263,7 +265,7 @@ export async function processSecureImage(
   }
 
   // Check dimension limits
-  if (originalWidth > opts.maxWidth || originalHeight > opts.maxHeight) {
+  if (!opts.allowOversize && (originalWidth > opts.maxWidth || originalHeight > opts.maxHeight)) {
     throw new ImageProcessingError(
       'DIMENSIONS_EXCEED_LIMIT',
       `Image dimensions (${originalWidth}x${originalHeight}) exceed maximum allowed (${opts.maxWidth}x${opts.maxHeight})`,

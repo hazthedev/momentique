@@ -90,7 +90,10 @@ export async function uploadImageToStorage(
   // ============================================
   // 2. PROCESS IMAGE WITH SECURITY
   // ============================================
-  const processingOptions = getTierProcessingOptions(tier);
+  const processingOptions = {
+    ...getTierProcessingOptions(tier),
+    allowOversize: true,
+  };
   const processed = await processSecureImage(imageBuffer, processingOptions);
 
   // Verify EXIF was stripped

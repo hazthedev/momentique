@@ -33,6 +33,7 @@ export interface ValidationOptions {
   maxHeight?: number;
   allowedMimeTypes?: string[];
   allowAnimated?: boolean;
+  allowOversize?: boolean;
 }
 
 // ============================================
@@ -124,6 +125,7 @@ const DEFAULT_OPTIONS: Required<ValidationOptions> = {
   maxHeight: 10000,
   allowedMimeTypes: DEFAULT_ALLOWED_MIME_TYPES,
   allowAnimated: false,
+  allowOversize: false,
 };
 
 // ============================================
@@ -248,14 +250,20 @@ export async function validateUploadedImage(
   }
 
   // Check format-specific dimension limits
-  const formatMaxDimensions = formatInfo.maxDimensions || { width: opts.maxWidth, height: opts.maxHeight };
+  const formatMaxDimensions = formatInfo.maxDimensions || null;
+  const maxWidth = formatMaxDimensions?.width ?? opts.maxWidth;
+  const maxHeight = formatMaxDimensions?.height ?? opts.maxHeight;
+  const exceedsMax = dimensions.width > maxWidth || dimensions.height > maxHeight;
 
-  if (dimensions.width > formatMaxDimensions.width || dimensions.height > formatMaxDimensions.height) {
-    return {
-      valid: false,
-      error: `Image dimensions exceed maximum allowed size (${formatMaxDimensions.width}x${formatMaxDimensions.height})`,
-      code: 'DIMENSIONS_TOO_LARGE',
-    };
+  if (exceedsMax) {
+    // Always enforce format-specific hard caps (ex: HEIC)
+    if (formatMaxDimensions || !opts.allowOversize) {
+      return {
+        valid: false,
+        error: `Image dimensions exceed maximum allowed size (${maxWidth}x${maxHeight})`,
+        code: 'DIMENSIONS_TOO_LARGE',
+      };
+    }
   }
 
   // Minimum dimension check (prevent tiny images)

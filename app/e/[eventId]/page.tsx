@@ -41,6 +41,59 @@ interface SelectedFile {
   name: string;
 }
 
+const GUEST_MAX_DIMENSION = 4000;
+
+async function loadImageElement(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = (error) => {
+      URL.revokeObjectURL(url);
+      reject(error);
+    };
+    img.src = url;
+  });
+}
+
+async function resizeImageIfNeeded(file: File, maxDimension: number): Promise<{ file: File; resized: boolean }> {
+  try {
+    const img = await loadImageElement(file);
+    const width = img.naturalWidth || img.width;
+    const height = img.naturalHeight || img.height;
+    if (!width || !height) return { file, resized: false };
+
+    const scale = Math.min(maxDimension / width, maxDimension / height, 1);
+    if (scale >= 1) return { file, resized: false };
+
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { file, resized: false };
+
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+    const outputType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, outputType, 0.9)
+    );
+    if (!blob) return { file, resized: false };
+
+    return {
+      file: new File([blob], file.name, { type: blob.type || outputType, lastModified: file.lastModified }),
+      resized: true,
+    };
+  } catch {
+    return { file, resized: false };
+  }
+}
+
 // ============================================
 // GUEST NAME MODAL COMPONENT
 // ============================================
@@ -180,8 +233,10 @@ export default function GuestEventPage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [optimizedCount, setOptimizedCount] = useState(0);
   const [joinLuckyDraw, setJoinLuckyDraw] = useState(true);
   const [hasJoinedDraw, setHasJoinedDraw] = useState(false);
   const fingerprint = useMemo(() => getClientFingerprint(), []);
@@ -511,13 +566,26 @@ export default function GuestEventPage() {
       return;
     }
 
-    setIsUploading(true);
     setUploadError(null);
 
     try {
-      const formData = new FormData();
+      setIsOptimizing(true);
+      let resizedCount = 0;
+      const processedFiles: File[] = [];
+
       for (const selectedFile of selectedFiles) {
-        formData.append('files', selectedFile.file);
+        const result = await resizeImageIfNeeded(selectedFile.file, GUEST_MAX_DIMENSION);
+        if (result.resized) resizedCount += 1;
+        processedFiles.push(result.file);
+      }
+
+      setOptimizedCount(resizedCount);
+      setIsOptimizing(false);
+      setIsUploading(true);
+
+      const formData = new FormData();
+      for (const file of processedFiles) {
+        formData.append('files', file);
       }
       formData.append('contributor_name', guestName.trim());
       formData.append('is_anonymous', isAnonymous ? 'true' : 'false');
@@ -565,6 +633,7 @@ export default function GuestEventPage() {
         setShowUploadModal(false);
         setSelectedFiles([]);
         setCaption('');
+        setOptimizedCount(0);
         setRecaptchaToken(null);
         setRecaptchaError(null);
       }, 1500);
@@ -572,6 +641,7 @@ export default function GuestEventPage() {
       console.error('[GUEST_EVENT] Upload error:', err);
       setUploadError(err instanceof Error ? err.message : 'Failed to upload photo');
     } finally {
+      setIsOptimizing(false);
       setIsUploading(false);
     }
   };
@@ -970,11 +1040,12 @@ export default function GuestEventPage() {
                   setUploadError(null);
                   setUploadSuccess(false);
                   setCaption('');
+                  setOptimizedCount(0);
                   setRecaptchaToken(null);
                   setRecaptchaError(null);
                 }}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                disabled={isUploading}
+                disabled={isUploading || isOptimizing}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -984,7 +1055,14 @@ export default function GuestEventPage() {
             {uploadSuccess && (
               <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 p-3 text-green-800 dark:bg-green-900/20 dark:text-green-300">
                 <Check className="h-5 w-5 flex-shrink-0" />
-                <p className="text-sm">Photo uploaded successfully!</p>
+                <p className="text-sm">
+                  Photo uploaded successfully!
+                  {optimizedCount > 0 && (
+                    <span className="ml-2 text-xs text-green-700 dark:text-green-300">
+                      Optimized {optimizedCount} photo{optimizedCount > 1 ? 's' : ''} for upload.
+                    </span>
+                  )}
+                </p>
               </div>
             )}
 
@@ -1005,7 +1083,16 @@ export default function GuestEventPage() {
               </div>
             )}
 
-            {!uploadSuccess && !isUploading && (
+            {isOptimizing && (
+              <div className="mb-4 flex flex-col items-center gap-3 rounded-lg bg-amber-50 p-6 dark:bg-amber-900/20">
+                <Loader2 className="h-10 w-10 animate-spin text-amber-600" />
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  Optimizing large photos...
+                </p>
+              </div>
+            )}
+
+            {!uploadSuccess && !isUploading && !isOptimizing && (
               <div className="space-y-4">
                 {/* Selected Files Preview */}
                 {selectedFiles.length > 0 && (
@@ -1068,6 +1155,10 @@ export default function GuestEventPage() {
                     </label>
                   </div>
                 )}
+
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  Large photos are optimized automatically before upload
+                </p>
 
                 {/* Caption */}
                 <div>
@@ -1152,7 +1243,7 @@ export default function GuestEventPage() {
                 {selectedFiles.length > 0 && (
                   <button
                     onClick={handleUpload}
-                    disabled={isUploading}
+                    disabled={isUploading || isOptimizing}
                     className="w-full rounded-lg bg-gradient-to-r from-violet-600 to-pink-600 py-3 text-sm font-semibold text-white hover:from-violet-700 hover:to-pink-700 transition-all disabled:opacity-50"
                   >
                     Upload {selectedFiles.length} Photo{selectedFiles.length > 1 ? 's' : ''}
