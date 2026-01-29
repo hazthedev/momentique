@@ -273,7 +273,6 @@ export default function EventAdminPage() {
                     event={event}
                     onSuccess={(updatedEvent) => {
                       setEvent(updatedEvent);
-                      toast.success('Settings updated successfully');
                     }}
                   />
                 </div>

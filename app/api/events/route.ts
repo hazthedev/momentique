@@ -245,6 +245,7 @@ export async function POST(request: NextRequest) {
         background: '#F9FAFB',
         logo_url: undefined,
         frame_template: 'polaroid',
+        photo_card_style: 'vacation',
       },
       features: {
         photo_upload_enabled: true,

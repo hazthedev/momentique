@@ -42,6 +42,13 @@ interface SelectedFile {
 }
 
 const GUEST_MAX_DIMENSION = 4000;
+const PHOTO_CARD_STYLE_CLASSES: Record<string, string> = {
+  vacation: 'rounded-2xl bg-white shadow-[0_12px_24px_rgba(0,0,0,0.12)] ring-1 ring-black/5',
+  brutalist: 'rounded-none bg-white border-2 border-black shadow-[6px_6px_0_#000]',
+  wedding: 'rounded-3xl bg-white border border-rose-200 shadow-[0_8px_24px_rgba(244,114,182,0.25)]',
+  celebration: 'rounded-2xl bg-gradient-to-br from-yellow-50 via-white to-pink-50 border border-amber-200 shadow-[0_10px_26px_rgba(249,115,22,0.25)]',
+  futuristic: 'rounded-2xl bg-slate-950/90 border border-cyan-400/40 shadow-[0_0_24px_rgba(34,211,238,0.35)]',
+};
 
 async function loadImageElement(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -283,6 +290,8 @@ export default function GuestEventPage() {
   const [showGuestModal, setShowGuestModal] = useState(false);
   const allowAnonymous = event?.settings?.features?.anonymous_allowed !== false;
   const moderationRequired = event?.settings?.features?.moderation_required || false;
+  const luckyDrawEnabled = event?.settings?.features?.lucky_draw_enabled !== false;
+  const photoCardStyle = event?.settings?.theme?.photo_card_style || 'vacation';
 
   // Selected files for upload (preview before submit)
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
@@ -293,6 +302,9 @@ export default function GuestEventPage() {
 
   // Track which photos are currently showing the heart animation
   const [animatingPhotos, setAnimatingPhotos] = useState<Set<string>>(new Set());
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
+  const canDownload = event?.settings?.features?.guest_download_enabled !== false;
+  const selectedCount = selectedPhotoIds.size;
 
   // Load guest name from localStorage on mount
   useEffect(() => {
@@ -319,6 +331,12 @@ export default function GuestEventPage() {
     }
   }, [allowAnonymous, isAnonymous]);
 
+  useEffect(() => {
+    if (!luckyDrawEnabled && joinLuckyDraw) {
+      setJoinLuckyDraw(false);
+    }
+  }, [luckyDrawEnabled, joinLuckyDraw]);
+
   // Handle guest modal submit
   const handleGuestModalSubmit = (name: string, anonymous: boolean) => {
     const nextAnonymous = allowAnonymous ? anonymous : false;
@@ -326,8 +344,8 @@ export default function GuestEventPage() {
     setIsAnonymous(nextAnonymous);
     setShowGuestModal(false);
 
-    // If anonymous, can't join lucky draw
-    if (nextAnonymous) {
+    // If anonymous or lucky draw disabled, can't join
+    if (nextAnonymous || !luckyDrawEnabled) {
       setJoinLuckyDraw(false);
     } else if (!hasJoinedDraw) {
       setJoinLuckyDraw(true);
@@ -385,6 +403,18 @@ export default function GuestEventPage() {
     }, 6000);
     return () => clearTimeout(timeout);
   }, [moderationNotice]);
+
+  useEffect(() => {
+    if (!canDownload) {
+      setSelectedPhotoIds(new Set());
+      return;
+    }
+    const approvedIds = new Set(photos.filter((photo) => photo.status === 'approved').map((photo) => photo.id));
+    setSelectedPhotoIds((prev) => {
+      const next = new Set(Array.from(prev).filter((id) => approvedIds.has(id)));
+      return next;
+    });
+  }, [canDownload, photos]);
 
   // Handle love reaction on double-click with heart burst animation
   const handleLoveReaction = async (photoId: string) => {
@@ -458,7 +488,7 @@ export default function GuestEventPage() {
   // Download photo
   const handleDownloadPhoto = async (photo: IPhoto) => {
     try {
-      const response = await fetch(`/api/photos/${photo.id}/download`);
+      const response = await fetch(`/api/photos/${photo.id}/download?format=png`);
       if (!response.ok) {
         throw new Error('Download failed');
       }
@@ -482,6 +512,81 @@ export default function GuestEventPage() {
     const targetEventId = resolvedEventId || eventId;
     if (!targetEventId) return;
     window.location.href = `/api/events/${targetEventId}/download`;
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedPhotoIds.size === 0) return;
+    const targetEventId = resolvedEventId || eventId;
+    if (!targetEventId) return;
+
+    try {
+      const response = await fetch(`/api/events/${targetEventId}/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoIds: Array.from(selectedPhotoIds) }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const contentDisposition = response.headers.get('content-disposition') || '';
+      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+      a.download = filenameMatch ? filenameMatch[1] : `event-${targetEventId}-selected.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('[GUEST_EVENT] Selected download error:', err);
+    }
+  };
+
+  const handleDownloadSelectedIndividually = async () => {
+    if (selectedPhotoIds.size === 0) return;
+    const photoIds = Array.from(selectedPhotoIds);
+
+    for (const photoId of photoIds) {
+      try {
+        const response = await fetch(`/api/photos/${photoId}/download?format=png`);
+        if (!response.ok) {
+          throw new Error('Download failed');
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.rel = 'noopener';
+        const contentDisposition = response.headers.get('content-disposition') || '';
+        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+        a.download = filenameMatch ? filenameMatch[1] : `photo-${photoId}.png`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }, 2000);
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      } catch (err) {
+        console.error('[GUEST_EVENT] Individual download error:', err);
+      }
+    }
+  };
+
+  const toggleSelectedPhoto = (photoId: string) => {
+    setSelectedPhotoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(photoId)) {
+        next.delete(photoId);
+      } else {
+        next.add(photoId);
+      }
+      return next;
+    });
   };
 
   // Check if input looks like a UUID (8-4-4-4-12 format)
@@ -743,7 +848,7 @@ export default function GuestEventPage() {
       if (caption.trim()) {
         formData.append('caption', caption.trim());
       }
-      if (joinLuckyDraw && !isAnonymous) {
+      if (luckyDrawEnabled && joinLuckyDraw && !isAnonymous) {
         formData.append('join_lucky_draw', 'true');
       }
       if (recaptchaToken) {
@@ -850,8 +955,6 @@ export default function GuestEventPage() {
     day: 'numeric',
   });
 
-  const canDownload = event.settings?.features?.guest_download_enabled !== false;
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Guest Name Modal */}
@@ -950,13 +1053,33 @@ export default function GuestEventPage() {
                 </span>
               )}
               {canDownload && (
-                <button
-                  onClick={handleDownloadAll}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                >
-                  <Download className="h-4 w-4" />
-                  Download all
-                </button>
+                <>
+                  {selectedCount > 0 && (
+                    <>
+                      <button
+                        onClick={handleDownloadSelectedIndividually}
+                        className="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-100 dark:border-violet-500/60 dark:bg-violet-900/30 dark:text-violet-200 dark:hover:bg-violet-900/50"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download selected ({selectedCount})
+                      </button>
+                      <button
+                        onClick={handleDownloadSelected}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download ZIP ({selectedCount})
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={handleDownloadAll}
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download all
+                  </button>
+                </>
               )}
               <button
                 onClick={() => setShowGuestModal(true)}
@@ -1070,7 +1193,7 @@ export default function GuestEventPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {photos.map((photo) => {
                 const userLoveCount = userLoves[photo.id] || 0;
                 const totalHeartCount = photo.reactions?.heart || 0;
@@ -1082,7 +1205,11 @@ export default function GuestEventPage() {
                       if (photo.status !== 'approved') return;
                       handleLoveReaction(photo.id);
                     }}
-                    className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100 cursor-pointer"
+                    className={clsx(
+                      'group relative aspect-square overflow-hidden cursor-pointer',
+                      PHOTO_CARD_STYLE_CLASSES[photoCardStyle] || PHOTO_CARD_STYLE_CLASSES.vacation,
+                      canDownload && selectedPhotoIds.has(photo.id) && 'ring-2 ring-violet-500'
+                    )}
                   >
                     <Image
                       src={photo.images.medium_url || photo.images.full_url}
@@ -1104,6 +1231,21 @@ export default function GuestEventPage() {
                       >
                         <Download className="h-4 w-4" />
                       </button>
+                    )}
+
+                    {/* Select checkbox */}
+                    {canDownload && photo.status === 'approved' && (
+                      <label
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute bottom-2 left-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPhotoIds.has(photo.id)}
+                          onChange={() => toggleSelectedPhoto(photo.id)}
+                          className="h-4 w-4 rounded border-white text-violet-600 focus:ring-violet-500"
+                        />
+                      </label>
                     )}
 
                     {(photo.status === 'pending' || photo.status === 'rejected') && (
@@ -1364,7 +1506,7 @@ export default function GuestEventPage() {
                 </div>
 
                 {/* Lucky Draw Entry */}
-                {!isAnonymous && (
+                {luckyDrawEnabled && !isAnonymous && (
                   <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 dark:border-violet-800 dark:bg-violet-900/20">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input

@@ -6,10 +6,26 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Palette, Download, Eye, Sparkles } from 'lucide-react';
+import { Loader2, Download, Eye, Sparkles, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import type { IEvent, IEventTheme, IEventFeatures } from '@/lib/types';
+
+const PHOTO_CARD_STYLES = [
+    { id: 'vacation', label: 'Vacation', description: 'Bright, airy, postcard vibe' },
+    { id: 'brutalist', label: 'Brutalist Minimal', description: 'Bold borders, raw contrast' },
+    { id: 'wedding', label: 'Wedding', description: 'Soft, romantic, refined' },
+    { id: 'celebration', label: 'Celebration', description: 'Warm, festive, joyful' },
+    { id: 'futuristic', label: 'Futuristic', description: 'Neon glow, sleek tech' },
+];
+
+const PHOTO_CARD_STYLE_CLASSES: Record<string, string> = {
+    vacation: 'rounded-2xl bg-white shadow-[0_12px_24px_rgba(0,0,0,0.12)] ring-1 ring-black/5',
+    brutalist: 'rounded-none bg-white border-2 border-black shadow-[6px_6px_0_#000]',
+    wedding: 'rounded-3xl bg-white border border-rose-200 shadow-[0_8px_24px_rgba(244,114,182,0.25)]',
+    celebration: 'rounded-2xl bg-gradient-to-br from-yellow-50 via-white to-pink-50 border border-amber-200 shadow-[0_10px_26px_rgba(249,115,22,0.25)]',
+    futuristic: 'rounded-2xl bg-slate-950/90 border border-cyan-400/40 shadow-[0_0_24px_rgba(34,211,238,0.35)]',
+};
 
 // ============================================
 // TYPES
@@ -22,96 +38,6 @@ interface EventSettingsFormProps {
 }
 
 // ============================================
-// HELPER: Generate complementary secondary color
-// ============================================
-
-function hexToHSL(hex: string): { h: number; s: number; l: number } {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return { h: 0, s: 0, l: 0 };
-
-    let r = parseInt(result[1], 16) / 255;
-    let g = parseInt(result[2], 16) / 255;
-    let b = parseInt(result[3], 16) / 255;
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h = 0;
-    let s = 0;
-    const l = (max + min) / 2;
-
-    if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-            case r:
-                h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-                break;
-            case g:
-                h = ((b - r) / d + 2) / 6;
-                break;
-            case b:
-                h = ((r - g) / d + 4) / 6;
-                break;
-        }
-    }
-
-    return { h: h * 360, s: s * 100, l: l * 100 };
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-    s /= 100;
-    l /= 100;
-
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-
-    let r = 0, g = 0, b = 0;
-
-    if (h >= 0 && h < 60) {
-        r = c; g = x; b = 0;
-    } else if (h >= 60 && h < 120) {
-        r = x; g = c; b = 0;
-    } else if (h >= 120 && h < 180) {
-        r = 0; g = c; b = x;
-    } else if (h >= 180 && h < 240) {
-        r = 0; g = x; b = c;
-    } else if (h >= 240 && h < 300) {
-        r = x; g = 0; b = c;
-    } else {
-        r = c; g = 0; b = x;
-    }
-
-    const toHex = (n: number) => {
-        const hex = Math.round((n + m) * 255).toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-    };
-
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-function generateSecondaryColor(primary: string): string {
-    const { h, s, l } = hexToHSL(primary);
-    // Shift hue by 30 degrees (analogous color) and adjust lightness
-    const newH = (h + 30) % 360;
-    const newL = l > 50 ? l - 15 : l + 15;
-    return hslToHex(newH, s, Math.max(20, Math.min(80, newL)));
-}
-
-// ============================================
-// PRESET THEMES
-// ============================================
-
-const presetThemes = [
-    { name: 'Violet Dream', primary: '#7c3aed', secondary: '#ec4899' },
-    { name: 'Ocean Blue', primary: '#0ea5e9', secondary: '#06b6d4' },
-    { name: 'Forest Green', primary: '#22c55e', secondary: '#84cc16' },
-    { name: 'Sunset Orange', primary: '#f97316', secondary: '#eab308' },
-    { name: 'Rose Gold', primary: '#f43f5e', secondary: '#fb7185' },
-    { name: 'Midnight', primary: '#6366f1', secondary: '#8b5cf6' },
-];
-
-// ============================================
 // COMPONENT
 // ============================================
 
@@ -120,9 +46,10 @@ export function EventSettingsForm({
     onSuccess,
     className,
 }: EventSettingsFormProps) {
-    // Theme settings
-    const [primaryColor, setPrimaryColor] = useState(event.settings?.theme?.primary_color || '#7c3aed');
-    const [secondaryColor, setSecondaryColor] = useState(event.settings?.theme?.secondary_color || '#ec4899');
+    const [photoCardStyle, setPhotoCardStyle] = useState(
+        event.settings?.theme?.photo_card_style || 'vacation'
+    );
+    const [showPreview, setShowPreview] = useState(false);
 
     // Feature toggles
     const [guestDownloadEnabled, setGuestDownloadEnabled] = useState(
@@ -143,12 +70,8 @@ export function EventSettingsForm({
 
     // Track changes
     useEffect(() => {
-        const originalTheme = event.settings?.theme || {};
         const originalFeatures = event.settings?.features || {};
-
-        const themeChanged =
-            primaryColor !== (originalTheme.primary_color || '#7c3aed') ||
-            secondaryColor !== (originalTheme.secondary_color || '#ec4899');
+        const originalTheme = event.settings?.theme || {};
 
         const featuresChanged =
             guestDownloadEnabled !== (originalFeatures.guest_download_enabled !== false) ||
@@ -156,22 +79,10 @@ export function EventSettingsForm({
             anonymousAllowed !== (originalFeatures.anonymous_allowed !== false) ||
             luckyDrawEnabled !== (originalFeatures.lucky_draw_enabled !== false);
 
-        setHasChanges(themeChanged || featuresChanged);
-    }, [primaryColor, secondaryColor, guestDownloadEnabled, moderationRequired, anonymousAllowed, luckyDrawEnabled, event]);
+        const themeChanged = photoCardStyle !== (originalTheme.photo_card_style || 'vacation');
 
-    // Auto-suggest secondary color when primary changes
-    const handlePrimaryColorChange = useCallback((color: string) => {
-        setPrimaryColor(color);
-        // Auto-suggest secondary based on primary
-        const suggested = generateSecondaryColor(color);
-        setSecondaryColor(suggested);
-    }, []);
-
-    // Apply preset theme
-    const applyPreset = (preset: typeof presetThemes[0]) => {
-        setPrimaryColor(preset.primary);
-        setSecondaryColor(preset.secondary);
-    };
+        setHasChanges(featuresChanged || themeChanged);
+    }, [guestDownloadEnabled, moderationRequired, anonymousAllowed, luckyDrawEnabled, photoCardStyle, event]);
 
     // Save settings
     const handleSave = async () => {
@@ -189,8 +100,7 @@ export function EventSettingsForm({
                         ...event.settings,
                         theme: {
                             ...event.settings?.theme,
-                            primary_color: primaryColor,
-                            secondary_color: secondaryColor,
+                            photo_card_style: photoCardStyle,
                         },
                         features: {
                             ...event.settings?.features,
@@ -222,120 +132,109 @@ export function EventSettingsForm({
 
     return (
         <div className={clsx('space-y-8', className)}>
-            {/* Theme Section */}
+            {/* Photo Card Style */}
             <div>
                 <div className="flex items-center gap-2 mb-4">
                     <Palette className="h-5 w-5 text-violet-600" />
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        Theme Colors
+                        Photo Card Style
                     </h3>
                 </div>
 
-                {/* Preset Themes */}
-                <div className="mb-6">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Quick Presets</p>
-                    <div className="flex flex-wrap gap-2">
-                        {presetThemes.map((preset) => (
+                <div className="grid gap-3 sm:grid-cols-2">
+                    {PHOTO_CARD_STYLES.map((style) => {
+                        const selected = photoCardStyle === style.id;
+                        return (
                             <button
-                                key={preset.name}
-                                onClick={() => applyPreset(preset)}
-                                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-violet-400 hover:bg-violet-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-violet-500 transition-colors"
+                                key={style.id}
+                                type="button"
+                                onClick={() => setPhotoCardStyle(style.id)}
+                                className={clsx(
+                                    'group flex items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+                                    selected
+                                        ? 'border-violet-500 bg-violet-50 dark:border-violet-400 dark:bg-violet-900/20'
+                                        : 'border-gray-200 bg-white hover:border-violet-300 dark:border-gray-700 dark:bg-gray-800'
+                                )}
                             >
-                                <span
-                                    className="h-3 w-3 rounded-full"
-                                    style={{ backgroundColor: preset.primary }}
-                                />
-                                {preset.name}
+                                <div className={clsx(
+                                    'flex h-16 w-16 items-center justify-center overflow-hidden',
+                                    PHOTO_CARD_STYLE_CLASSES[style.id]
+                                )}>
+                                    <div className="h-12 w-12 rounded-md bg-gradient-to-br from-gray-200 to-gray-100 dark:from-gray-700 dark:to-gray-800" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                        {style.label}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {style.description}
+                                    </p>
+                                </div>
+                                {selected && (
+                                    <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                                        Active
+                                    </span>
+                                )}
                             </button>
-                        ))}
-                    </div>
+                        );
+                    })}
                 </div>
 
-                {/* Color Pickers */}
-                <div className="space-y-4">
-                    {/* Primary Color */}
-                    <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Primary Color
-                        </label>
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <input
-                                    type="color"
-                                    value={primaryColor}
-                                    onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div
-                                    className="h-10 w-10 rounded-lg border-2 border-gray-300 dark:border-gray-500 shadow-sm"
-                                    style={{ backgroundColor: primaryColor }}
-                                />
-                            </div>
-                            <input
-                                type="text"
-                                value={primaryColor}
-                                onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                                placeholder="#7c3aed"
-                                className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Secondary Color */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Secondary Color
-                            <span className="text-xs text-violet-500 flex items-center gap-1">
-                                <Sparkles className="h-3 w-3" />
-                                Auto
-                            </span>
-                        </label>
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <input
-                                    type="color"
-                                    value={secondaryColor}
-                                    onChange={(e) => setSecondaryColor(e.target.value)}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div
-                                    className="h-10 w-10 rounded-lg border-2 border-gray-300 dark:border-gray-500 shadow-sm"
-                                    style={{ backgroundColor: secondaryColor }}
-                                />
-                            </div>
-                            <input
-                                type="text"
-                                value={secondaryColor}
-                                onChange={(e) => setSecondaryColor(e.target.value)}
-                                placeholder="#ec4899"
-                                className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                            />
-                        </div>
-                    </div>
-
-                </div>
-
-                {/* Preview */}
-                <div className="mt-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Preview</p>
-                    <div className="rounded-xl p-4 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                        <div className="flex items-center gap-2">
-                            <div
-                                className="rounded-lg px-4 py-2 text-white text-sm font-medium"
-                                style={{ backgroundColor: primaryColor }}
-                            >
-                                Primary Button
-                            </div>
-                            <div
-                                className="rounded-lg px-4 py-2 text-white text-sm font-medium"
-                                style={{ backgroundColor: secondaryColor }}
-                            >
-                                Secondary
-                            </div>
-                        </div>
-                    </div>
+                <div className="mt-3 flex items-center justify-between">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Applied to guest photo cards on the event page.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowPreview(true)}
+                        className="text-xs font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                    >
+                        Preview selected style
+                    </button>
                 </div>
             </div>
+
+            {showPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                Photo Card Preview
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setShowPreview(false)}
+                                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="flex flex-col items-center gap-3">
+                            <div className={clsx(
+                                'w-64 max-w-full overflow-hidden',
+                                PHOTO_CARD_STYLE_CLASSES[photoCardStyle]
+                            )}>
+                                <div className="relative aspect-square w-full overflow-hidden rounded-[inherit]">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-800 dark:to-gray-700" />
+                                    <div
+                                        className={clsx(
+                                            'absolute inset-0 flex items-center justify-center text-sm font-semibold',
+                                            photoCardStyle === 'futuristic'
+                                                ? 'text-cyan-100'
+                                                : 'text-gray-700 dark:text-gray-200'
+                                        )}
+                                    >
+                                        Preview Photo
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {PHOTO_CARD_STYLES.find((style) => style.id === photoCardStyle)?.description}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Feature Toggles Section */}
             <div>

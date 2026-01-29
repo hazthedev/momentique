@@ -33,6 +33,14 @@ export async function GET(
   try {
     const { id } = await params;
     const watermark = request.nextUrl.searchParams.get('watermark') === '1';
+    const formatParam = (request.nextUrl.searchParams.get('format') || 'original').toLowerCase();
+    const requestedFormat = formatParam === 'jpg' ? 'jpeg' : formatParam;
+    const allowedFormats = new Set(['original', 'png', 'jpeg', 'webp']);
+    const outputFormat = (allowedFormats.has(requestedFormat) ? requestedFormat : 'original') as
+      | 'original'
+      | 'png'
+      | 'jpeg'
+      | 'webp';
 
     let authUser: { userId: string; tenantId: string; role: string } | null = null;
     try {
@@ -86,13 +94,29 @@ export async function GET(
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    let buffer: Uint8Array = new Uint8Array(arrayBuffer);
+    let buffer: Buffer = Buffer.from(arrayBuffer);
     if (!authUser && watermark) {
       buffer = await applyWatermark(buffer, 'Gatherly');
     }
 
-    const filename = buildPhotoFilename(photo.event_name || 'event', photo);
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    let filename = buildPhotoFilename(photo.event_name || 'event', photo);
+    let contentType = response.headers.get('content-type') || 'application/octet-stream';
+
+    if (outputFormat !== 'original') {
+      const converted = await sharp(buffer).toFormat(outputFormat as 'png' | 'jpeg' | 'webp').toBuffer();
+      buffer = converted;
+      const extension = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+      filename = filename.replace(/\.[^.]+$/, `.${extension}`);
+      if (!filename.endsWith(`.${extension}`)) {
+        filename = `${filename}.${extension}`;
+      }
+      contentType =
+        outputFormat === 'png'
+          ? 'image/png'
+          : outputFormat === 'webp'
+            ? 'image/webp'
+            : 'image/jpeg';
+    }
 
     return new NextResponse(buffer as BodyInit, {
       headers: {

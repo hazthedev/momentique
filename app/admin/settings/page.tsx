@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS: ISystemSettings = {
         background: '#F9FAFB',
         logo_url: undefined,
         frame_template: 'polaroid',
+        photo_card_style: 'vacation',
       },
       features: {
         photo_upload_enabled: true,
@@ -450,6 +451,30 @@ export default function SupervisorSettingsPage() {
                 <option value="filmstrip">Filmstrip</option>
                 <option value="classic">Classic</option>
                 <option value="minimal">Minimal</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 text-gray-600 dark:text-gray-300">
+              <span>Photo card style</span>
+              <select
+                value={settings.events.default_settings.theme.photo_card_style || 'vacation'}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    events: {
+                      default_settings: {
+                        ...prev.events.default_settings,
+                        theme: { ...prev.events.default_settings.theme, photo_card_style: e.target.value },
+                      },
+                    },
+                  }))
+                }
+                className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-900"
+              >
+                <option value="vacation">Vacation</option>
+                <option value="brutalist">Brutalist minimal</option>
+                <option value="wedding">Wedding</option>
+                <option value="celebration">Celebration</option>
+                <option value="futuristic">Futuristic</option>
               </select>
             </label>
           </div>

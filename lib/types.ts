@@ -90,6 +90,7 @@ export interface ISystemSettings {
         background: string;
         logo_url?: string;
         frame_template: string;
+        photo_card_style?: string;
       };
       features: {
         photo_upload_enabled: boolean;
@@ -158,6 +159,7 @@ export interface IEventTheme {
   background: string;
   logo_url?: string;
   frame_template: string;
+  photo_card_style?: string;
 }
 
 export interface IEventFeatures {
