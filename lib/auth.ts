@@ -18,8 +18,16 @@ const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || '';
 const ACCESS_TOKEN_EXPIRES = parseInt(process.env.JWT_ACCESS_EXPIRES || '900', 10); // 15 minutes
 const REFRESH_TOKEN_EXPIRES = parseInt(process.env.JWT_REFRESH_EXPIRES || '604800', 10); // 7 days
 
+const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
+
 if (!ACCESS_TOKEN_SECRET || !REFRESH_TOKEN_SECRET) {
-  throw new Error('[Auth] JWT secrets not configured');
+  if (IS_PROD && !IS_BUILD && typeof window === 'undefined') {
+    throw new Error('[Auth] JWT secrets not configured');
+  }
+  if (!IS_PROD) {
+    console.warn('[Auth] JWT secrets not configured. Using temporary secrets in development only.');
+  }
 }
 
 // ============================================
