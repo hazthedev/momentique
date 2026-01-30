@@ -14,6 +14,12 @@ import {
 
 export const runtime = 'nodejs';
 
+const isMissingTableError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error as { code?: string }).code === '42P01';
+
 // ============================================
 // GET /api/events/:eventId/lucky-draw/config - Get active config
 // ============================================
@@ -63,6 +69,12 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (isMissingTableError(error)) {
+      return NextResponse.json({
+        data: null,
+        message: 'Lucky draw tables not initialized',
+      });
+    }
     console.error('[API] Config fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch configuration', code: 'FETCH_ERROR' },

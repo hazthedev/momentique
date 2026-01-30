@@ -9,6 +9,12 @@ import { getActiveConfig, getEventEntries } from '@/lib/lucky-draw';
 
 export const runtime = 'nodejs';
 
+const isMissingTableError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error as { code?: string }).code === '42P01';
+
 // ============================================
 // GET /api/events/:eventId/lucky-draw/participants - List participants
 // ============================================
@@ -98,6 +104,17 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (isMissingTableError(error)) {
+      return NextResponse.json({
+        data: [],
+        pagination: {
+          total: 0,
+          uniqueParticipants: 0,
+          totalEntries: 0,
+        },
+        message: 'Lucky draw tables not initialized',
+      });
+    }
     console.error('[API] Participants fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch participants', code: 'FETCH_ERROR' },

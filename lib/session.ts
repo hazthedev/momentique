@@ -32,13 +32,15 @@ function getInMemorySession(sessionId: string): ISessionData | null {
 
 // SECURITY: Fail fast if SESSION_SECRET is not set in production
 const SESSION_SECRET = process.env.SESSION_SECRET;
+const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
 
 if (!SESSION_SECRET) {
-  // Only fail in actual production runtime, not during build
-  if (process.env.NODE_ENV === 'production' && typeof window === 'undefined' && process.env.VERCEL_ENV) {
+  // Avoid failing during Next.js build-time evaluation
+  if (IS_PROD && !IS_BUILD && typeof window === 'undefined') {
     throw new Error('[SESSION] SESSION_SECRET environment variable must be set in production!');
   }
-  if (process.env.NODE_ENV !== 'production') {
+  if (!IS_PROD) {
     console.warn('[SESSION] SESSION_SECRET not configured. Using random temporary key (sessions will be invalidated on restart). Set SESSION_SECRET environment variable!');
   }
 }

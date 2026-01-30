@@ -9,6 +9,12 @@ import type { Winner } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
+const isMissingTableError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error as { code?: string }).code === '42P01';
+
 // ============================================
 // GET /api/events/:eventId/lucky-draw/history - Get draw history
 // ============================================
@@ -118,6 +124,17 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (isMissingTableError(error)) {
+      return NextResponse.json({
+        data: [],
+        summary: {
+          totalDraws: 0,
+          completedDraws: 0,
+          totalWinners: 0,
+        },
+        message: 'Lucky draw tables not initialized',
+      });
+    }
     console.error('[API] History fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch history', code: 'FETCH_ERROR' },
