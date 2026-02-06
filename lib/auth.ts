@@ -578,7 +578,7 @@ export async function verifyPhotoModerationAccess(
   userId: string,
   userRole: string
 ): Promise<{
-  photo: { id: string; organizer_id: string; event_id: string };
+  photo: { id: string; organizer_id: string; event_id: string; user_fingerprint: string; is_anonymous: boolean };
   isOwner: boolean;
   isAdmin: boolean;
 }> {
@@ -588,10 +588,14 @@ export async function verifyPhotoModerationAccess(
     id: string;
     organizer_id: string;
     event_id: string;
+    user_fingerprint: string;
+    is_anonymous: boolean;
   }>(
     `SELECT p.id,
             e.organizer_id,
-            p.event_id
+            p.event_id,
+            p.user_fingerprint,
+            p.is_anonymous
      FROM photos p
      JOIN events e ON p.event_id = e.id
      WHERE p.id = $1`,

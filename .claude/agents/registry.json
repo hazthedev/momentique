@@ -1,0 +1,157 @@
+{
+  "version": "1.0.0",
+  "description": "Momentique Agent Registry - Central configuration for all specialized agents",
+  "lastUpdated": "2025-02-02",
+
+  "agents": [
+    {
+      "id": "auth-security-agent",
+      "priority": 1,
+      "critical": true,
+      "handles": ["authentication", "authorization", "security", "jwt", "sessions"]
+    },
+    {
+      "id": "multi-tenant-agent",
+      "priority": 1,
+      "critical": true,
+      "handles": ["tenancy", "subdomains", "routing", "tiers", "limits"]
+    },
+    {
+      "id": "event-management-agent",
+      "priority": 2,
+      "critical": true,
+      "handles": ["events", "qr-codes", "themes", "settings"]
+    },
+    {
+      "id": "photo-processing-agent",
+      "priority": 2,
+      "critical": true,
+      "handles": ["photos", "uploads", "storage", "images", "moderation"]
+    },
+    {
+      "id": "lucky-draw-agent",
+      "priority": 3,
+      "critical": false,
+      "handles": ["lucky-draw", "winners", "prizes", "draws"]
+    },
+    {
+      "id": "photo-challenge-agent",
+      "priority": 3,
+      "critical": false,
+      "handles": ["challenges", "goals", "progress", "prizes"]
+    },
+    {
+      "id": "attendance-agent",
+      "priority": 3,
+      "critical": false,
+      "handles": ["check-in", "attendance", "guests", "qr-scanning"]
+    },
+    {
+      "id": "admin-dashboard-agent",
+      "priority": 2,
+      "critical": true,
+      "handles": ["admin", "tenants", "users", "settings"]
+    },
+    {
+      "id": "realtime-agent",
+      "priority": 4,
+      "critical": false,
+      "handles": ["websocket", "realtime", "live-updates", "broadcasting"]
+    },
+    {
+      "id": "ui-ux-agent",
+      "priority": 2,
+      "critical": true,
+      "handles": ["components", "layout", "design", "animations", "accessibility"]
+    }
+  ],
+
+  "agentMapping": {
+    "authentication": "auth-security-agent",
+    "authorization": "auth-security-agent",
+    "jwt": "auth-security-agent",
+    "sessions": "auth-security-agent",
+    "password": "auth-security-agent",
+    "login": "auth-security-agent",
+    "register": "auth-security-agent",
+    "tenant": "multi-tenant-agent",
+    "tenancy": "multi-tenant-agent",
+    "subdomain": "multi-tenant-agent",
+    "tier": "multi-tenant-agent",
+    "subscription": "multi-tenant-agent",
+    "limits": "multi-tenant-agent",
+    "features": "multi-tenant-agent",
+    "event": "event-management-agent",
+    "events": "event-management-agent",
+    "qr": "event-management-agent",
+    "theme": "event-management-agent",
+    "photo": "photo-processing-agent",
+    "photos": "photo-processing-agent",
+    "upload": "photo-processing-agent",
+    "image": "photo-processing-agent",
+    "storage": "photo-processing-agent",
+    "moderation": "photo-processing-agent",
+    "gallery": "photo-processing-agent",
+    "lucky-draw": "lucky-draw-agent",
+    "lucky draw": "lucky-draw-agent",
+    "winner": "lucky-draw-agent",
+    "prize": "lucky-draw-agent",
+    "draw": "lucky-draw-agent",
+    "challenge": "photo-challenge-agent",
+    "photo-challenge": "photo-challenge-agent",
+    "progress": "photo-challenge-agent",
+    "goal": "photo-challenge-agent",
+    "attendance": "attendance-agent",
+    "checkin": "attendance-agent",
+    "check-in": "attendance-agent",
+    "guest": "attendance-agent",
+    "admin": "admin-dashboard-agent",
+    "dashboard": "admin-dashboard-agent",
+    "system": "admin-dashboard-agent",
+    "settings": "admin-dashboard-agent",
+    "realtime": "realtime-agent",
+    "websocket": "realtime-agent",
+    "live": "realtime-agent",
+    "socket": "realtime-agent",
+    "ui": "ui-ux-agent",
+    "ux": "ui-ux-agent",
+    "component": "ui-ux-agent",
+    "layout": "ui-ux-agent",
+    "design": "ui-ux-agent",
+    "animation": "ui-ux-agent"
+  },
+
+  "workflow": {
+    "task_routing": {
+      "description": "When a task is received, route to the appropriate agent based on keywords",
+      "process": [
+        "1. Extract keywords from task description",
+        "2. Match keywords to agentMapping",
+        "3. If multiple matches, use priority to decide",
+        "4. If no match, ask user to specify agent"
+      ]
+    },
+    "collaboration": {
+      "description": "When multiple agents need to work together",
+      "examples": [
+        "photo-upload: photo-processing-agent + auth-security-agent + multi-tenant-agent",
+        "event-creation: event-management-agent + multi-tenant-agent + ui-ux-agent",
+        "lucky-draw: lucky-draw-agent + event-management-agent + realtime-agent"
+      ]
+    }
+  },
+
+  "usage": {
+    "claude_code": {
+      "description": "How to use these agents with Claude Code",
+      "method_1": "Mention agent by name in your prompt",
+      "method_2": "Use keywords that map to specific agents",
+      "method_3": "Let the system auto-route based on task context"
+    },
+    "examples": [
+      "Agent: auth-security-agent - Add OAuth2 support",
+      "Add multi-tenant caching (routed to multi-tenant-agent)",
+      "Create a new photo filter component (routed to photo-processing-agent + ui-ux-agent)"
+    ]
+  }
+}

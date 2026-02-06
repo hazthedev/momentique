@@ -458,6 +458,94 @@ export const winners = pgTable('winners', {
 }));
 
 // ============================================
+// PHOTO CHALLENGE TABLES
+// ============================================
+
+/**
+ * Photo challenge configuration per event
+ * Encourages guests to upload photos by offering a prize incentive
+ */
+export const photoChallenges = pgTable('photo_challenges', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventId: uuid('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+
+  // Challenge configuration
+  goalPhotos: integer('goal_photos').notNull().default(5),
+  prizeTitle: text('prize_title').notNull(),
+  prizeDescription: text('prize_description'),
+  prizeTier: text('prize_tier'),
+
+  // Settings
+  enabled: boolean('enabled').notNull().default(true),
+  autoGrant: boolean('auto_grant').notNull().default(true),
+
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  // Indexes
+  photoChallengeEventIdx: index('photo_challenge_event_idx').on(table.eventId),
+}));
+
+/**
+ * Track individual guest progress toward photo challenge goal
+ * One record per guest per event
+ */
+export const guestPhotoProgress = pgTable('guest_photo_progress', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventId: uuid('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+  userFingerprint: text('user_fingerprint').notNull(),
+
+  // Progress tracking
+  photosUploaded: integer('photos_uploaded').notNull().default(0),
+  photosApproved: integer('photos_approved').notNull().default(0),
+  goalReached: boolean('goal_reached').notNull().default(false),
+
+  // Prize claim tracking
+  prizeClaimedAt: timestamp('prize_claimed_at'),
+  prizeRevoked: boolean('prize_revoked').notNull().default(false),
+  revokeReason: text('revoke_reason'),
+
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  // Indexes
+  guestProgressEventIdx: index('guest_progress_event_idx').on(table.eventId),
+  guestProgressUserFingerprintIdx: index('guest_progress_user_fingerprint_idx').on(table.userFingerprint),
+  // Unique constraint: one progress record per guest per event
+  guestProgressEventUserUnique: unique('guest_progress_event_user_key').on(table.eventId, table.userFingerprint),
+}));
+
+/**
+ * Prize claim log for verification and revocation
+ * Stores QR code tokens and claim history
+ */
+export const prizeClaims = pgTable('prize_claims', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventId: uuid('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+  userFingerprint: text('user_fingerprint').notNull(),
+  challengeId: uuid('challenge_id').references(() => photoChallenges.id),
+
+  // QR code for prize claim
+  qrCodeToken: text('qr_code_token').notNull().unique(),
+
+  // Claim tracking
+  claimedAt: timestamp('claimed_at').notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at'),
+  revokeReason: text('revoke_reason'),
+  verifiedBy: uuid('verified_by').references(() => users.id),
+
+  // Additional metadata
+  metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  // Indexes
+  prizeClaimEventIdx: index('prize_claim_event_idx').on(table.eventId),
+  prizeClaimQrCodeTokenIdx: index('prize_claim_qr_token_idx').on(table.qrCodeToken),
+  prizeClaimEventUserUnique: unique('prize_claim_event_user_key').on(table.eventId, table.userFingerprint),
+}));
+
+// ============================================
 // TYPE EXPORTS
 // ============================================
 
@@ -483,3 +571,9 @@ export type Winner = typeof winners.$inferSelect;
 export type NewWinner = typeof winners.$inferInsert;
 export type DrawStatus = typeof drawStatusEnum;
 export type PrizeTier = typeof prizeTierEnum;
+export type PhotoChallenge = typeof photoChallenges.$inferSelect;
+export type NewPhotoChallenge = typeof photoChallenges.$inferInsert;
+export type GuestPhotoProgress = typeof guestPhotoProgress.$inferSelect;
+export type NewGuestPhotoProgress = typeof guestPhotoProgress.$inferInsert;
+export type PrizeClaim = typeof prizeClaims.$inferSelect;
+export type NewPrizeClaim = typeof prizeClaims.$inferInsert;

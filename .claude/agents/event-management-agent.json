@@ -1,0 +1,160 @@
+{
+  "name": "event-management-agent",
+  "displayName": "Event Management Agent",
+  "version": "1.0.0",
+  "description": "Handles event lifecycle management including creation, editing, settings, theme customization, QR code generation, and event analytics",
+  "icon": "calendar",
+  "color": "#f59e0b",
+
+  "responsibilities": [
+    "Event CRUD operations",
+    "Event status workflows (draft → active → ended → archived)",
+    "Event theme customization",
+    "QR code generation for events",
+    "Event settings management",
+    "Event slug generation",
+    "Short code generation",
+    "Event expiration handling",
+    "Event analytics and stats",
+    "Event listing and filtering"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/qrcode.ts",
+      "lib/tier-config.ts"
+    ],
+    "schema": [
+      "drizzle/schema.ts:194-242"
+    ],
+    "api": [
+      "app/api/events/**/*.ts",
+      "app/api/events/[eventId]/**/route.ts"
+    ],
+    "components": [
+      "components/events/**/*.tsx",
+      "components/events/**/*.ts"
+    ],
+    "pages": [
+      "app/events/**/page.tsx",
+      "app/e/[eventId]/**/page.tsx",
+      "app/organizer/events/**/page.tsx"
+    ]
+  },
+
+  "expertise": {
+    "eventTypes": ["birthday", "wedding", "corporate", "other"],
+    "eventStatus": ["draft", "active", "ended", "archived"],
+    "settings": {
+      "theme": {
+        "primary_color": "string (hex)",
+        "secondary_color": "string (hex)",
+        "background": "string (hex/url)",
+        "logo_url": "string (optional)",
+        "frame_template": "string"
+      },
+      "features": {
+        "photo_upload_enabled": "boolean",
+        "lucky_draw_enabled": "boolean",
+        "reactions_enabled": "boolean",
+        "moderation_required": "boolean",
+        "anonymous_allowed": "boolean",
+        "guest_download_enabled": "boolean",
+        "photo_challenge_enabled": "boolean",
+        "attendance_enabled": "boolean"
+      },
+      "limits": {
+        "max_photos_per_user": "number",
+        "max_total_photos": "number",
+        "max_draw_entries": "number"
+      }
+    }
+  },
+
+  "codePatterns": {
+    "qr_generation": "generateCheckInUrl() from lib/qrcode.ts",
+    "qr_api": "generateCheckInQRCodeUrl() from lib/qrcode.ts",
+    "event_creation": "POST /api/events",
+    "event_update": "PATCH /api/events/[eventId]",
+    "event_query": "Use tenant isolation (RLS)"
+  },
+
+  "uiComponents": {
+    "forms": [
+      "components/events/event-form.tsx",
+      "components/events/event-settings-form.tsx"
+    ],
+    "displays": [
+      "components/events/event-card.tsx",
+      "components/events/qr-code-display.tsx",
+      "components/events/event-stats.tsx"
+    ],
+    "pages": [
+      "app/organizer/events/new/page.tsx",
+      "app/organizer/events/[eventId]/edit/page.tsx",
+      "app/organizer/events/[eventId]/page.tsx"
+    ]
+  },
+
+  "apiEndpoints": {
+    "create": "POST /api/events",
+    "list": "GET /api/events",
+    "get": "GET /api/events/[eventId]",
+    "update": "PATCH /api/events/[eventId]",
+    "delete": "DELETE /api/events/[eventId]",
+    "stats": "GET /api/events/[eventId]/stats",
+    "download": "GET /api/events/[eventId]/download"
+  },
+
+  "businessLogic": {
+    "slug_generation": "URL-friendly, unique per tenant",
+    "short_code": "6-character memorable code",
+    "qr_code": "Points to /e/{eventId} or /attendances/{eventId}/checkin",
+    "expiration": "Optional expires_at timestamp"
+  },
+
+  "securityConsiderations": [
+    "Events isolated by tenant_id",
+    "Organizer can only edit their own events",
+    "Slug uniqueness enforced per tenant",
+    "Sensitive event data requires authentication"
+  ],
+
+  "commonTasks": [
+    "Add event template system",
+    "Implement event cloning",
+    "Add event reminder emails",
+    "Create event calendar view",
+    "Add event recurrence",
+    "Implement event co-organizers",
+    "Add event export functionality"
+  ],
+
+  "relatedAgents": [
+    "multi-tenant-agent",
+    "photo-processing-agent",
+    "lucky-draw-agent",
+    "attendance-agent"
+  ],
+
+  "integrationPoints": {
+    "photos": "Event has many photos",
+    "lucky_draw": "Event has one lucky draw config",
+    "attendance": "Event has many attendance records",
+    "photo_challenge": "Event has one photo challenge",
+    "tenant": "Event belongs to tenant"
+  },
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Slug generation",
+      "QR code URL generation",
+      "Event status transitions"
+    ],
+    "integration_tests": [
+      "Event CRUD operations",
+      "Event settings updates",
+      "Event permissions"
+    ]
+  }
+}

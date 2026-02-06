@@ -1,0 +1,204 @@
+{
+  "name": "realtime-agent",
+  "displayName": "Real-time Updates Agent",
+  "version": "1.0.0",
+  "description": "Handles WebSocket connections, real-time event broadcasting, and live data synchronization across the platform",
+  "icon": "zap",
+  "color": "#eab308",
+
+  "responsibilities": [
+    "WebSocket connection management",
+    "Redis pub/sub for multi-server support",
+    "Live photo feed updates",
+    "Real-time lucky draw progress",
+    "Attendance live updates",
+    "Connection state management",
+    "Reconnection logic",
+    "Event broadcasting",
+    "Room-based subscriptions",
+    "Presence tracking"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/realtime/**",
+      "lib/realtime/client.tsx",
+      "lib/session.ts"
+    ],
+    "infrastructure": [
+      "jobs/realtime/**"
+    ]
+  },
+
+  "expertise": {
+    "architecture": {
+      "client": "WebSocket client with React hooks",
+      "server": "Node.js WebSocket server",
+      "pub_sub": "Redis for multi-server coordination",
+      "fallback": "Polling for unsupported browsers"
+    },
+    "events": {
+      "photo_uploaded": "Broadcast new photo to event room",
+      "photo_approved": "Update photo visibility",
+      "photo_reacted": "Broadcast reaction updates",
+      "lucky_draw_started": "Notify all participants",
+      "lucky_draw_winner": "Announce winner selection",
+      "attendance_update": "Live guest count changes"
+    }
+  },
+
+  "codePatterns": {
+    "client_connection": "useRealtime() hook from lib/realtime/client.tsx",
+    "room_subscription": "Subscribe to event-specific room",
+    "event_broadcast": "Publish to Redis pub/sub",
+    "reconnection": "Exponential backoff retry logic"
+  },
+
+  "architecture": {
+    "client": {
+      "browser": "WebSocket API or Socket.io client",
+      "react": "Custom hook for component integration",
+      "reconnection": "Auto-reconnect with backoff",
+      "heartbeat": "Ping/pong for connection health"
+    },
+    "server": {
+      "websocket": "Node.js ws or Socket.io server",
+      "redis": "Pub/sub for multi-server sync",
+      "rooms": "Event-based room subscriptions",
+      "auth": "JWT validation on connection"
+    },
+    "message_format": {
+      "type": "Event type (photo_uploaded, etc.)",
+      "event_id": "Target event UUID",
+      "data": "Event payload",
+      "timestamp": "ISO timestamp"
+    }
+  },
+
+  "rooms": {
+    "pattern": "event:{eventId}",
+    "events": [
+      "photo:uploaded",
+      "photo:approved",
+      "photo:rejected",
+      "photo:reacted",
+      "lucky_draw:started",
+      "lucky_draw:progress",
+      "lucky_draw:winner",
+      "attendance:updated"
+    ]
+  },
+
+  "current_state": {
+    "client": "Basic WebSocket client in lib/realtime/client.tsx",
+    "server": "NOT IMPLEMENTED - placeholder only",
+    "redis_pub_sub": "NOT IMPLEMENTED",
+    "reconnection": "Basic implementation"
+  },
+
+  "implementation_plan": {
+    "phase_1": {
+      "description": "Basic WebSocket server",
+      "tasks": [
+        "Create WebSocket server with ws package",
+        "Implement JWT authentication on connection",
+        "Add room-based subscriptions",
+        "Create Redis pub/sub adapter"
+      ]
+    },
+    "phase_2": {
+      "description": "Event broadcasting",
+      "tasks": [
+        "Hook into photo upload API",
+        "Broadcast photo approval events",
+        "Implement lucky draw progress updates",
+        "Add attendance count broadcasting"
+      ]
+    },
+    "phase_3": {
+      "description": "Client enhancements",
+      "tasks": [
+        "Add connection status indicator",
+        "Implement optimistic updates",
+        "Add event replay on reconnect",
+        "Create reconnection notification"
+      ]
+    }
+  },
+
+  "api_patterns": {
+    "client_connect": "ws://localhost:3000/ws?token={jwt}",
+    "subscribe": '{"action": "subscribe", "room": "event:{eventId}"}',
+    "unsubscribe": '{"action": "unsubscribe", "room": "event:{eventId}"}',
+    "message": '{"type": "photo:uploaded", "event_id": "...", "data": {...}}'
+  },
+
+  "securityConsiderations": [
+    "Validate JWT on WebSocket connection",
+    "Verify room membership before subscribing",
+    "Rate limit WebSocket messages",
+    "Sanitize all broadcast data",
+    "Use WSS (WebSocket Secure) in production",
+    "Implement connection timeout"
+  ],
+
+  "commonTasks": [
+    "Implement WebSocket server",
+    "Add Redis pub/sub for multi-server",
+    "Create live photo feed component",
+    "Add connection status indicator",
+    "Implement event replay on reconnect",
+    "Add presence tracking (who's viewing)",
+    "Create admin real-time monitor",
+    "Add push notification fallback"
+  ],
+
+  "relatedAgents": [
+    "photo-processing-agent",
+    "lucky-draw-agent",
+    "attendance-agent"
+  ],
+
+  "integrationPoints": {
+    "photos": "Broadcast on upload/approval",
+    "lucky_draw": "Progress updates during draw",
+    "attendance": "Live guest count changes",
+    "auth": "JWT validation for connections"
+  },
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Message serialization",
+      "Room subscription logic",
+      "Connection state management"
+    ],
+    "integration_tests": [
+      "WebSocket connection lifecycle",
+      "Redis pub/sub message delivery",
+      "Broadcast to multiple clients"
+    ],
+    "load_tests": [
+      "Concurrent connection limits",
+      "Message throughput",
+      "Memory usage over time"
+    ]
+  },
+
+  "todos": [
+    "Create WebSocket server implementation",
+    "Add Redis adapter for pub/sub",
+    "Implement connection authentication",
+    "Add room-based routing",
+    "Create message broadcasting utilities",
+    "Add connection pooling",
+    "Implement graceful shutdown"
+  ],
+
+  "libraries": {
+    "recommended": [
+      {"name": "ws", "description": "Node.js WebSocket library"},
+      {"name": "socket.io", "description": "Full-featured WebSocket framework"},
+      {"name": "ioredis", "description": "Redis client for pub/sub"}
+    ]
+  }
+}

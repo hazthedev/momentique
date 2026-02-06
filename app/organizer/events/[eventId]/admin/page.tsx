@@ -18,13 +18,15 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Target,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { EventStats } from '@/components/events/event-stats';
 import QRCodeDisplay from '@/components/events/qr-code-display';
 import { LuckyDrawAdminTab } from '@/components/lucky-draw/admin/LuckyDrawAdminTab';
-import EventFormComponent from '@/components/events/event-form';
-import EventSettingsForm from '@/components/events/event-settings-form';
+import { AttendanceAdminTab } from '@/components/attendance/AttendanceAdminTab';
+import { PhotoChallengeAdminTab } from '@/components/photo-challenge/admin-tab';
+import { SettingsAdminTab } from '@/components/settings/SettingsAdminTab';
 import { toast } from 'sonner';
 import type { IEvent } from '@/lib/types';
 
@@ -36,7 +38,7 @@ export default function EventAdminPage() {
   const [event, setEvent] = useState<IEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'qr' | 'lucky_draw' | 'settings' | 'moderation'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'qr' | 'lucky_draw' | 'attendance' | 'settings' | 'moderation' | 'photo_challenge'>('overview');
   const [moderationLogs, setModerationLogs] = useState<Array<{
     id: string;
     photoId: string;
@@ -97,6 +99,8 @@ export default function EventAdminPage() {
   const tabs = [
     { id: 'overview' as const, label: 'Overview', icon: ImageIcon },
     { id: 'lucky_draw' as const, label: 'Lucky Draw', icon: Sparkles },
+    { id: 'attendance' as const, label: 'Attendance', icon: Users },
+    { id: 'photo_challenge' as const, label: 'Photo Challenge', icon: Target },
     { id: 'qr' as const, label: 'QR Code', icon: QrCode },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
     { id: 'moderation' as const, label: 'Moderation', icon: Shield },
@@ -197,6 +201,31 @@ export default function EventAdminPage() {
             </div>
           )}
 
+          {activeTab === 'attendance' && (
+            <div>
+              <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Attendance Management
+              </h2>
+              <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                Manage check-ins, view guest lists, generate QR codes, and track attendance data
+              </p>
+
+              <AttendanceAdminTab eventId={eventId} />
+            </div>
+          )}
+
+          {activeTab === 'photo_challenge' && (
+            <div>
+              <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Photo Challenge Management
+              </h2>
+              <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                Motivate guests to upload more photos with goals and prizes
+              </p>
+              <PhotoChallengeAdminTab eventId={eventId} />
+            </div>
+          )}
+
           {activeTab === 'overview' && (
             <div>
               <h2 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -249,34 +278,16 @@ export default function EventAdminPage() {
 
           {activeTab === 'settings' && (
             <div>
-              <h2 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Event Settings
               </h2>
-              <div className="space-y-6">
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
-                    Event Details
-                  </h3>
-                  <EventFormComponent
-                    event={event}
-                    submitLabel="Save Details"
-                    onSuccess={(updatedEvent) => {
-                      toast.success('Event updated successfully');
-                      setEvent(updatedEvent);
-                    }}
-                    onCancel={() => router.push(`/organizer/events/${eventId}/admin`)}
-                  />
-                </div>
-
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                  <EventSettingsForm
-                    event={event}
-                    onSuccess={(updatedEvent) => {
-                      setEvent(updatedEvent);
-                    }}
-                  />
-                </div>
-              </div>
+              <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                Manage event details, theme, features, and security settings
+              </p>
+              <SettingsAdminTab
+                event={event}
+                onUpdate={(updatedEvent) => setEvent(updatedEvent)}
+              />
             </div>
           )}
 

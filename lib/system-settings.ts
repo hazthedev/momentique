@@ -36,6 +36,8 @@ const DEFAULT_SYSTEM_SETTINGS: ISystemSettings = {
         moderation_required: false,
         anonymous_allowed: true,
         guest_download_enabled: true,
+        photo_challenge_enabled: false,
+        attendance_enabled: false,
       },
     },
   },

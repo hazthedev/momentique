@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Download, Eye, Sparkles, Palette } from 'lucide-react';
+import { Loader2, Download, Eye, Sparkles, Palette, Users, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import type { IEvent, IEventTheme, IEventFeatures } from '@/lib/types';
@@ -118,6 +118,12 @@ export function EventSettingsForm({
     const [luckyDrawEnabled, setLuckyDrawEnabled] = useState(
         event.settings?.features?.lucky_draw_enabled !== false
     );
+    const [attendanceEnabled, setAttendanceEnabled] = useState(
+        event.settings?.features?.attendance_enabled !== false
+    );
+    const [photoChallengeEnabled, setPhotoChallengeEnabled] = useState(
+        event.settings?.features?.photo_challenge_enabled || false
+    );
     const [uploadRateLimits, setUploadRateLimits] = useState({
         ...DEFAULT_UPLOAD_RATE_LIMITS,
         ...(event.settings?.security?.upload_rate_limits || {}),
@@ -136,7 +142,9 @@ export function EventSettingsForm({
             guestDownloadEnabled !== (originalFeatures.guest_download_enabled !== false) ||
             moderationRequired !== (originalFeatures.moderation_required || false) ||
             anonymousAllowed !== (originalFeatures.anonymous_allowed !== false) ||
-            luckyDrawEnabled !== (originalFeatures.lucky_draw_enabled !== false);
+            luckyDrawEnabled !== (originalFeatures.lucky_draw_enabled !== false) ||
+            attendanceEnabled !== (originalFeatures.attendance_enabled !== false) ||
+            photoChallengeEnabled !== (originalFeatures.photo_challenge_enabled || false);
 
         const themeChanged =
             photoCardStyle !== (originalTheme.photo_card_style || 'vacation') ||
@@ -156,6 +164,8 @@ export function EventSettingsForm({
         moderationRequired,
         anonymousAllowed,
         luckyDrawEnabled,
+        attendanceEnabled,
+        photoChallengeEnabled,
         photoCardStyle,
         primaryColor,
         secondaryColor,
@@ -192,6 +202,8 @@ export function EventSettingsForm({
                             moderation_required: moderationRequired,
                             anonymous_allowed: anonymousAllowed,
                             lucky_draw_enabled: luckyDrawEnabled,
+                            attendance_enabled: attendanceEnabled,
+                            photo_challenge_enabled: photoChallengeEnabled,
                         },
                         security: {
                             upload_rate_limits: {
@@ -421,6 +433,64 @@ export function EventSettingsForm({
                                 className={clsx(
                                     'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform',
                                     luckyDrawEnabled ? 'left-[22px]' : 'left-0.5'
+                                )}
+                            />
+                        </div>
+                    </label>
+
+                    {/* Attendance Toggle */}
+                    <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <Users className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                            <div>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">
+                                    Enable Attendance Check-in
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Allow guests to check in and track attendance
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            onClick={() => setAttendanceEnabled(!attendanceEnabled)}
+                            className={clsx(
+                                'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                                attendanceEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                            )}
+                        >
+                            <div
+                                className={clsx(
+                                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform',
+                                    attendanceEnabled ? 'left-[22px]' : 'left-0.5'
+                                )}
+                            />
+                        </div>
+                    </label>
+
+                    {/* Photo Challenge Toggle */}
+                    <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <Target className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                            <div>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">
+                                    Enable Photo Challenge
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Motivate guests with photo upload goals and prizes
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            onClick={() => setPhotoChallengeEnabled(!photoChallengeEnabled)}
+                            className={clsx(
+                                'relative h-6 w-11 rounded-full transition-colors cursor-pointer',
+                                photoChallengeEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'
+                            )}
+                        >
+                            <div
+                                className={clsx(
+                                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform',
+                                    photoChallengeEnabled ? 'left-[22px]' : 'left-0.5'
                                 )}
                             />
                         </div>

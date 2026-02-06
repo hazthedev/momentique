@@ -1,0 +1,152 @@
+{
+  "name": "photo-challenge-agent",
+  "displayName": "Photo Challenge Agent",
+  "version": "1.0.0",
+  "description": "Manages photo challenge system with goal-based incentives, progress tracking, and QR code prize claims",
+  "icon": "trophy",
+  "color": "#f97316",
+
+  "responsibilities": [
+    "Photo challenge configuration",
+    "Goal-based photo upload incentives",
+    "Per-guest progress tracking",
+    "Prize claim management",
+    "QR code generation for prizes",
+    "Auto-grant functionality",
+    "Prize revocation",
+    "Progress visualization",
+    "Prize verification"
+  ],
+
+  "filePatterns": {
+    "primary": [],
+    "schema": [
+      "drizzle/schema.ts:468-546"
+    ],
+    "api": [
+      "app/api/events/[eventId]/photo-challenge/**/route.ts"
+    ],
+    "components": [
+      "components/photo-challenge/**/*.tsx",
+      "components/photo-challenge/**/*.ts"
+    ],
+    "pages": [
+      "app/organizer/events/[eventId]/photo-challenge/**/page.tsx"
+    ]
+  },
+
+  "expertise": {
+    "tables": {
+      "photo_challenges": "Challenge configuration per event",
+      "guest_photo_progress": "Progress tracking per guest per event",
+      "prize_claims": "QR code tokens and claim history"
+    },
+    "workflow": {
+      "1": "Organizer creates challenge with goal and prize",
+      "2": "Guest uploads photos",
+      "3": "Progress tracked automatically",
+      "4": "When goal reached, prize granted",
+      "5": "QR code generated for claim",
+      "6": "Organizer verifies and claims prize"
+    }
+  },
+
+  "codePatterns": {
+    "challenge_config": "photo_challenges table",
+    "progress_tracking": "guest_photo_progress table",
+    "prize_claim": "prize_claims table with qr_code_token",
+    "unique_constraint": "One progress record per guest per event"
+  },
+
+  "businessLogic": {
+    "progress_tracking": {
+      "photos_uploaded": "Increment on each approved photo",
+      "photos_approved": "Count only approved photos",
+      "goal_reached": "Set to true when goal met",
+      "auto_grant": "Automatically create prize claim if enabled"
+    },
+    "prize_claim": {
+      "qr_token": "Unique token for verification",
+      "claimed_at": "Timestamp when prize claimed",
+      "revoked_at": "Timestamp if prize revoked",
+      "verified_by": "User ID of organizer who verified"
+    }
+  },
+
+  "apiEndpoints": {
+    "config": {
+      "get": "GET /api/events/[eventId]/photo-challenge",
+      "create": "POST /api/events/[eventId]/photo-challenge",
+      "update": "PATCH /api/events/[eventId]/photo-challenge"
+    },
+    "progress": {
+      "get": "GET /api/events/[eventId]/photo-challenge/progress",
+      "user_progress": "Get progress for specific user fingerprint"
+    },
+    "prizes": {
+      "claim": "POST /api/events/[eventId]/photo-challenge/claim",
+      "revoke": "POST /api/events/[eventId]/photo-challenge/revoke",
+      "verify": "GET /organizer/events/[eventId]/photo-challenge/verify"
+    }
+  },
+
+  "uiComponents": {
+    "progress": "components/photo-challenge/PhotoChallengeProgress.tsx",
+    "progress_bar": "components/photo-challenge/progress-bar.tsx",
+    "prize_modal": "components/photo-challenge/PrizeClaimModal.tsx",
+    "settings": "components/photo-challenge/settings-form.tsx",
+    "admin": "components/photo-challenge/admin-tab.tsx"
+  },
+
+  "configuration": {
+    "goal_photos": "Number of photos to upload (default: 5)",
+    "prize_title": "Title of the prize",
+    "prize_description": "Description of the prize",
+    "prize_tier": "Optional tier classification",
+    "enabled": "Whether challenge is active",
+    "auto_grant": "Automatically create prize claim"
+  },
+
+  "securityConsiderations": [
+    "One progress record per guest per event (enforced by unique constraint)",
+    "QR codes should be cryptographically random",
+    "Only organizers can verify prizes",
+    "Prize revocation should be logged with reason",
+    "Progress updates require valid user fingerprint"
+  ],
+
+  "commonTasks": [
+    "Add challenge templates",
+    "Implement multiple prize tiers per challenge",
+    "Add leaderboard for top contributors",
+    "Create challenge email notifications",
+    "Add challenge sharing (social media)",
+    "Implement group challenges",
+    "Add challenge history/archive"
+  ],
+
+  "relatedAgents": [
+    "event-management-agent",
+    "photo-processing-agent",
+    "attendance-agent"
+  ],
+
+  "integrationPoints": {
+    "photos": "Challenge progress updates on photo approval",
+    "attendance": "Can link guest info to progress",
+    "qr_codes": "Use lib/qrcode.ts for prize claim codes"
+  },
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Progress calculation",
+      "Goal detection",
+      "QR code uniqueness"
+    ],
+    "integration_tests": [
+      "Full challenge workflow",
+      "Auto-grant functionality",
+      "Prize revocation"
+    ]
+  }
+}

@@ -76,46 +76,32 @@ export const RATE_LIMIT_CONFIGS = {
   // PHOTO UPLOAD RATE LIMITS (SECURITY)
   // ============================================
 
-  // Per IP: 10 uploads per hour
-  uploadPerIp: {
-    maxRequests: 10,
+  // Per user (fingerprint for guests, userId for authenticated): 1000 uploads per hour
+  uploadPerUser: {
+    maxRequests: 1000,
     windowSeconds: 3600, // 1 hour
-    keyPrefix: 'ratelimit:upload:ip',
+    keyPrefix: 'ratelimit:upload:user',
   },
 
-  // Per fingerprint (guest): 10 uploads per hour
-  uploadPerFingerprint: {
-    maxRequests: 10,
-    windowSeconds: 3600, // 1 hour
-    keyPrefix: 'ratelimit:upload:fingerprint',
-  },
-
-  // Per event: 100 uploads per day (prevent spamming a specific event)
+  // Per event: 1000 uploads per day
   uploadPerEvent: {
-    maxRequests: 100,
+    maxRequests: 1000,
     windowSeconds: 86400, // 24 hours
     keyPrefix: 'ratelimit:upload:event',
   },
 
-  // Burst protection: max 5 uploads per minute per IP
+  // Burst protection: 100 uploads per minute per IP
   uploadBurstPerIp: {
-    maxRequests: 5,
+    maxRequests: 100,
     windowSeconds: 60, // 1 minute
     keyPrefix: 'ratelimit:upload:burst:ip',
   },
 
-  // Burst protection: max 5 uploads per minute per fingerprint
+  // Burst protection: 100 uploads per minute per fingerprint
   uploadBurstPerFingerprint: {
-    maxRequests: 5,
+    maxRequests: 100,
     windowSeconds: 60, // 1 minute
     keyPrefix: 'ratelimit:upload:burst:fingerprint',
-  },
-
-  // Per user (authenticated): 50 uploads per hour
-  uploadPerUser: {
-    maxRequests: 50,
-    windowSeconds: 3600, // 1 hour
-    keyPrefix: 'ratelimit:upload:user',
   },
 
   // Generic: 100 requests per minute
@@ -608,106 +594,84 @@ export async function checkUploadRateLimit(
   overrides?: IUploadRateLimitOverrides
 ): Promise<IUploadRateLimitResult> {
   try {
-    const uploadPerIp = {
-      ...RATE_LIMIT_CONFIGS.uploadPerIp,
-      maxRequests: overrides?.per_ip_hourly ?? RATE_LIMIT_CONFIGS.uploadPerIp.maxRequests,
-    };
-    const uploadPerFingerprint = {
-      ...RATE_LIMIT_CONFIGS.uploadPerFingerprint,
-      maxRequests: overrides?.per_fingerprint_hourly ?? RATE_LIMIT_CONFIGS.uploadPerFingerprint.maxRequests,
-    };
-    const uploadBurstPerIp = {
-      ...RATE_LIMIT_CONFIGS.uploadBurstPerIp,
-      maxRequests: overrides?.burst_per_ip_minute ?? RATE_LIMIT_CONFIGS.uploadBurstPerIp.maxRequests,
+    const uploadPerUser = {
+      ...RATE_LIMIT_CONFIGS.uploadPerUser,
+      maxRequests: overrides?.per_user_hourly ?? overrides?.per_ip_hourly ?? overrides?.per_fingerprint_hourly ?? RATE_LIMIT_CONFIGS.uploadPerUser.maxRequests,
     };
     const uploadPerEvent = {
       ...RATE_LIMIT_CONFIGS.uploadPerEvent,
       maxRequests: overrides?.per_event_daily ?? RATE_LIMIT_CONFIGS.uploadPerEvent.maxRequests,
     };
+    const uploadBurstPerIp = {
+      ...RATE_LIMIT_CONFIGS.uploadBurstPerIp,
+      maxRequests: overrides?.burst_per_ip_minute ?? RATE_LIMIT_CONFIGS.uploadBurstPerIp.maxRequests,
+    };
+    const uploadBurstPerFingerprint = {
+      ...RATE_LIMIT_CONFIGS.uploadBurstPerFingerprint,
+      maxRequests: overrides?.burst_per_fingerprint_minute ?? RATE_LIMIT_CONFIGS.uploadBurstPerFingerprint.maxRequests,
+    };
+
+    // Determine user identifier (userId for authenticated, fingerprint for guests)
+    const userIdentifier = userId || fingerprint;
 
     // Run all rate limit checks in parallel for efficiency
     const checks = await Promise.all([
-      // IP-based limits
-      checkRateLimit(ipAddress, uploadPerIp),
+      // Burst protection (always check)
       checkRateLimit(ipAddress, uploadBurstPerIp),
+      userIdentifier ? checkRateLimit(userIdentifier, uploadBurstPerFingerprint) : null,
 
-      // Fingerprint-based limits (if provided)
-      fingerprint ? checkRateLimit(fingerprint, uploadPerFingerprint) : null,
-      fingerprint ? checkRateLimit(fingerprint, RATE_LIMIT_CONFIGS.uploadBurstPerFingerprint) : null,
+      // Per user/fingerprint hourly limit
+      userIdentifier ? checkRateLimit(userIdentifier, uploadPerUser) : null,
 
       // Event-based limit
       checkRateLimit(eventId, uploadPerEvent),
-
-      // User-based limit (if authenticated)
-      userId ? checkRateLimit(userId, RATE_LIMIT_CONFIGS.uploadPerUser) : null,
     ]);
 
-    // Check if any limit was exceeded
-    const ipHourly = checks[0];
-    const ipBurst = checks[1];
-    const fingerprintHourly = checks[2];
-    const fingerprintBurst = checks[3];
-    const eventDaily = checks[4];
-    const userHourly = checks[5];
+    const burstIp = checks[0];
+    const burstUser = checks[1];
+    const userHourly = checks[2];
+    const eventDaily = checks[3];
 
-    // Find which limit blocked the request (if any)
-    if (!ipHourly.allowed) {
+    // Check burst protection first
+    if (!burstIp.allowed) {
       return {
         allowed: false,
-        reason: 'IP address upload limit exceeded (10 per hour)',
-        limitType: 'ip_hourly',
-        resetAt: ipHourly.resetAt,
-        retryAfter: getRetryAfter(ipHourly),
-      };
-    }
-
-    if (!ipBurst.allowed) {
-      return {
-        allowed: false,
-        reason: 'Too many upload attempts (5 per minute maximum)',
+        reason: 'Too many upload attempts. Please slow down.',
         limitType: 'burst_ip',
-        resetAt: ipBurst.resetAt,
-        retryAfter: getRetryAfter(ipBurst),
+        resetAt: burstIp.resetAt,
+        retryAfter: getRetryAfter(burstIp),
       };
     }
 
-    if (fingerprint && fingerprintHourly && !fingerprintHourly.allowed) {
+    if (userIdentifier && burstUser && !burstUser.allowed) {
       return {
         allowed: false,
-        reason: 'Upload limit exceeded (10 per hour)',
-        limitType: 'fingerprint_hourly',
-        resetAt: fingerprintHourly.resetAt,
-        retryAfter: getRetryAfter(fingerprintHourly),
-      };
-    }
-
-    if (fingerprint && fingerprintBurst && !fingerprintBurst.allowed) {
-      return {
-        allowed: false,
-        reason: 'Too many upload attempts (5 per minute maximum)',
+        reason: 'Too many upload attempts. Please slow down.',
         limitType: 'burst_fingerprint',
-        resetAt: fingerprintBurst.resetAt,
-        retryAfter: getRetryAfter(fingerprintBurst),
+        resetAt: burstUser.resetAt,
+        retryAfter: getRetryAfter(burstUser),
       };
     }
 
-    if (!eventDaily.allowed) {
+    // Check per user/fingerprint hourly limit
+    if (userIdentifier && userHourly && !userHourly.allowed) {
       return {
         allowed: false,
-        reason: 'Event upload limit exceeded (100 per day)',
-        limitType: 'event_daily',
-        resetAt: eventDaily.resetAt,
-        retryAfter: getRetryAfter(eventDaily),
-      };
-    }
-
-    if (userHourly && !userHourly.allowed) {
-      return {
-        allowed: false,
-        reason: 'User upload limit exceeded (50 per hour)',
+        reason: 'Upload limit exceeded',
         limitType: 'user_hourly',
         resetAt: userHourly.resetAt,
         retryAfter: getRetryAfter(userHourly),
+      };
+    }
+
+    // Check per event daily limit
+    if (!eventDaily.allowed) {
+      return {
+        allowed: false,
+        reason: 'Event upload limit exceeded',
+        limitType: 'event_daily',
+        resetAt: eventDaily.resetAt,
+        retryAfter: getRetryAfter(eventDaily),
       };
     }
 
@@ -739,40 +703,56 @@ export async function getUploadRateLimitStatus(
   eventId: string,
   overrides?: IUploadRateLimitOverrides
 ): Promise<{
-  ipHourly: { used: number; limit: number; resetAt: Date };
-  ipBurst: { used: number; limit: number; resetAt: Date };
+  userHourly: { used: number; limit: number; resetAt: Date };
+  burstIp: { used: number; limit: number; resetAt: Date };
+  burstUser: { used: number; limit: number; resetAt: Date } | null;
   eventDaily: { used: number; limit: number; resetAt: Date };
 }> {
-  const uploadPerIp = {
-    ...RATE_LIMIT_CONFIGS.uploadPerIp,
-    maxRequests: overrides?.per_ip_hourly ?? RATE_LIMIT_CONFIGS.uploadPerIp.maxRequests,
-  };
-  const uploadBurstPerIp = {
-    ...RATE_LIMIT_CONFIGS.uploadBurstPerIp,
-    maxRequests: overrides?.burst_per_ip_minute ?? RATE_LIMIT_CONFIGS.uploadBurstPerIp.maxRequests,
+  const uploadPerUser = {
+    ...RATE_LIMIT_CONFIGS.uploadPerUser,
+    maxRequests: overrides?.per_user_hourly ?? overrides?.per_ip_hourly ?? overrides?.per_fingerprint_hourly ?? RATE_LIMIT_CONFIGS.uploadPerUser.maxRequests,
   };
   const uploadPerEvent = {
     ...RATE_LIMIT_CONFIGS.uploadPerEvent,
     maxRequests: overrides?.per_event_daily ?? RATE_LIMIT_CONFIGS.uploadPerEvent.maxRequests,
   };
+  const uploadBurstPerIp = {
+    ...RATE_LIMIT_CONFIGS.uploadBurstPerIp,
+    maxRequests: overrides?.burst_per_ip_minute ?? RATE_LIMIT_CONFIGS.uploadBurstPerIp.maxRequests,
+  };
+  const uploadBurstPerFingerprint = {
+    ...RATE_LIMIT_CONFIGS.uploadBurstPerFingerprint,
+    maxRequests: overrides?.burst_per_fingerprint_minute ?? RATE_LIMIT_CONFIGS.uploadBurstPerFingerprint.maxRequests,
+  };
 
-  const [ipHourlyStatus, ipBurstStatus, eventStatus] = await Promise.all([
-    getRateLimitStatus(ipAddress, uploadPerIp),
+  // Determine user identifier
+  const userIdentifier = fingerprint || null;
+
+  const [burstIpStatus, burstUserStatus, userHourlyStatus, eventStatus] = await Promise.all([
     getRateLimitStatus(ipAddress, uploadBurstPerIp),
+    userIdentifier ? getRateLimitStatus(userIdentifier, uploadBurstPerFingerprint) : null,
+    userIdentifier ? getRateLimitStatus(userIdentifier, uploadPerUser) : null,
     getRateLimitStatus(eventId, uploadPerEvent),
   ]);
 
   return {
-    ipHourly: {
-      used: ipHourlyStatus.count,
-      limit: ipHourlyStatus.limit,
-      resetAt: ipHourlyStatus.resetAt,
+    userHourly: userHourlyStatus
+      ? {
+          used: userHourlyStatus.count,
+          limit: userHourlyStatus.limit,
+          resetAt: userHourlyStatus.resetAt,
+        }
+      : { used: 0, limit: uploadPerUser.maxRequests, resetAt: new Date() },
+    burstIp: {
+      used: burstIpStatus.count,
+      limit: burstIpStatus.limit,
+      resetAt: burstIpStatus.resetAt,
     },
-    ipBurst: {
-      used: ipBurstStatus.count,
-      limit: ipBurstStatus.limit,
-      resetAt: ipBurstStatus.resetAt,
-    },
+    burstUser: burstUserStatus ? {
+      used: burstUserStatus.count,
+      limit: burstUserStatus.limit,
+      resetAt: burstUserStatus.resetAt,
+    } : null,
     eventDaily: {
       used: eventStatus.count,
       limit: eventStatus.limit,

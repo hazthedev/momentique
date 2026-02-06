@@ -1,0 +1,205 @@
+{
+  "name": "admin-dashboard-agent",
+  "displayName": "Admin Dashboard Agent",
+  "version": "1.0.0",
+  "description": "Manages super admin interface for system-wide configuration, tenant management, user administration, and platform analytics",
+  "icon": "shield-admin",
+  "color": "#6366f1",
+
+  "responsibilities": [
+    "System-wide settings management",
+    "Tenant CRUD operations",
+    "User administration",
+    "Platform analytics",
+    "Activity monitoring",
+    "System configuration",
+    "Default settings management",
+    "Upload limit configuration",
+    "Moderation settings",
+    "Tenant suspension handling"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/system-settings.ts"
+    ],
+    "schema": [
+      "drizzle/schema.ts:115-151"
+    ],
+    "api": [
+      "app/api/admin/**/route.ts",
+      "app/api/admin/**/**/route.ts"
+    ],
+    "components": [
+      "components/admin/**/*.tsx",
+      "components/admin/**/*.ts"
+    ],
+    "pages": [
+      "app/admin/**/page.tsx",
+      "app/admin/layout.tsx"
+    ]
+  },
+
+  "expertise": {
+    "role": "super_admin",
+    "access": "System-wide (bypasses tenant restrictions)",
+    "scope": "All tenants, all users, all settings",
+    "permissions": [
+      "create/update/delete tenants",
+      "modify user roles",
+      "update system settings",
+      "view platform analytics",
+      "moderate all content"
+    ]
+  },
+
+  "systemSettings": {
+    "uploads": {
+      "max_file_mb": "Maximum upload file size",
+      "allowed_types": "Array of allowed MIME types"
+    },
+    "moderation": {
+      "enabled": "Enable auto-moderation",
+      "aws_region": "AWS region for Rekognition",
+      "confidence_threshold": "Detection threshold (0-1)",
+      "auto_reject": "Auto-reject flagged content"
+    },
+    "events": {
+      "default_settings": {
+        "theme": "Default color scheme",
+        "features": "Default feature flags",
+        "limits": "Default limits"
+      }
+    }
+  },
+
+  "codePatterns": {
+    "get_settings": "getSystemSettings() from lib/system-settings.ts",
+    "update_settings": "updateSystemSettings() from lib/system-settings.ts",
+    "clear_cache": "clearSystemSettingsCache() from lib/system-settings.ts",
+    "auth_check": "Verify super_admin role before access"
+  },
+
+  "apiEndpoints": {
+    "settings": {
+      "get": "GET /api/admin/settings",
+      "update": "PATCH /api/admin/settings"
+    },
+    "tenants": {
+      "list": "GET /api/admin/tenants",
+      "create": "POST /api/admin/tenants",
+      "get": "GET /api/admin/tenants/[tenantId]",
+      "update": "PATCH /api/admin/tenants/[tenantId]",
+      "delete": "DELETE /api/admin/tenants/[tenantId]"
+    },
+    "users": {
+      "list": "GET /api/admin/users",
+      "update": "PATCH /api/admin/users/[userId]",
+      "delete": "DELETE /api/admin/users/[userId]"
+    },
+    "stats": {
+      "get": "GET /api/admin/stats"
+    },
+    "activity": {
+      "get": "GET /api/admin/activity"
+    },
+    "profile": {
+      "get": "GET /api/admin/profile",
+      "update": "PATCH /api/admin/profile"
+    },
+    "moderation": {
+      "queue": "GET /api/admin/moderation",
+      "action": "POST /api/admin/moderation"
+    }
+  },
+
+  "uiComponents": {
+    "dashboard": "components/admin/AdminDashboard.tsx",
+    "pages": {
+      "main": "app/admin/page.tsx",
+      "events": "app/admin/events/page.tsx",
+      "users": "app/admin/users/page.tsx",
+      "profile": "app/admin/profile/page.tsx",
+      "settings": "app/admin/settings/page.tsx"
+    },
+    "layout": "app/admin/layout.tsx"
+  },
+
+  "dashboardWidgets": {
+    "tenant_count": "Total active tenants",
+    "user_count": "Total users across all tenants",
+    "event_count": "Total events",
+    "photo_count": "Total photos",
+    "storage_used": "Platform-wide storage usage",
+    "active_trials": "Tenants in trial period"
+  },
+
+  "tenantManagement": {
+    "actions": [
+      "Create new tenant",
+      "Update tenant settings",
+      "Suspend tenant",
+      "Delete tenant",
+      "View tenant stats",
+      "Modify tenant tier"
+    ],
+    "fields": {
+      "tenant_type": "master | white_label | demo",
+      "brand_name": "Display name",
+      "company_name": "Legal name",
+      "contact_email": "Primary contact",
+      "domain": "Custom domain (optional)",
+      "subdomain": "Subdomain (optional)",
+      "subscription_tier": "free | pro | premium | enterprise",
+      "status": "active | suspended | trial"
+    }
+  },
+
+  "securityConsiderations": [
+    "Only super_admin can access admin endpoints",
+    "All admin actions should be logged",
+    "Tenant deletion should cascade properly",
+    "System settings changes should be audited",
+    "Rate limit admin API endpoints",
+    "Use secure session management"
+  ],
+
+  "commonTasks": [
+    "Add admin activity audit log",
+    "Create tenant onboarding wizard",
+    "Add platform revenue analytics",
+    "Implement tenant backup/restore",
+    "Add admin notification system",
+    "Create system health dashboard",
+    "Add bulk user operations",
+    "Implement admin role hierarchy"
+  ],
+
+  "relatedAgents": [
+    "multi-tenant-agent",
+    "auth-security-agent"
+  ],
+
+  "integrationPoints": {
+    "tenants": "Full CRUD on tenant table",
+    "users": "Can modify any user regardless of tenant",
+    "system_settings": "Global configuration storage",
+    "moderation": "Can moderate any content across platform"
+  },
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Settings caching",
+      "Settings merging logic"
+    ],
+    "integration_tests": [
+      "Admin API access control",
+      "Tenant management workflows",
+      "System settings updates"
+    ],
+    "security_tests": [
+      "Role verification",
+      "Unauthorized access blocking"
+    ]
+  }
+}

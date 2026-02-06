@@ -1,0 +1,174 @@
+{
+  "name": "lucky-draw-agent",
+  "displayName": "Lucky Draw Agent",
+  "version": "1.0.0",
+  "description": "Implements lucky draw logic including winner selection algorithm, prize tiers, entry management, and draw animations",
+  "icon": "gift",
+  "color": "#ec4899",
+
+  "responsibilities": [
+    "Lucky draw configuration management",
+    "Entry creation from photos or manual",
+    "Fisher-Yates shuffle algorithm",
+    "Winner selection by prize tiers",
+    "Duplicate winner prevention",
+    "Redraw functionality",
+    "Winner tracking and claiming",
+    "Draw statistics",
+    "Animation configuration",
+    "Draw execution and history"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/lucky-draw.ts"
+    ],
+    "schema": [
+      "drizzle/schema.ts:320-458"
+    ],
+    "api": [
+      "app/api/events/[eventId]/lucky-draw/**/route.ts"
+    ],
+    "components": [
+      "components/lucky-draw/**/*.tsx",
+      "components/lucky-draw/**/*.ts"
+    ]
+  },
+
+  "expertise": {
+    "algorithm": {
+      "name": "Fisher-Yates Shuffle",
+      "randomness": "crypto.randomInt() for cryptographic security",
+      "time_complexity": "O(n)",
+      "space_complexity": "O(n)",
+      "fairness": "Each entry has equal probability"
+    },
+    "prize_tiers": {
+      "order": ["grand", "first", "second", "third", "consolation"],
+      "configuration": "JSONB array with tier, name, count, description",
+      "selection": "Sequential by tier order"
+    },
+    "draw_status": ["scheduled", "completed", "cancelled"]
+  },
+
+  "codePatterns": {
+    "config_creation": "createLuckyDrawConfig() from lib/lucky-draw.ts",
+    "entry_from_photo": "createEntryFromPhoto() from lib/lucky-draw.ts",
+    "manual_entry": "createManualEntries() from lib/lucky-draw.ts",
+    "execute_draw": "executeDraw() from lib/lucky-draw.ts",
+    "redraw": "redrawPrizeTier() from lib/lucky-draw.ts",
+    "shuffle": "fisherYatesShuffle() from lib/lucky-draw.ts"
+  },
+
+  "businessLogic": {
+    "entry_creation": {
+      "from_photo": "Auto-created on photo upload if enabled",
+      "manual": "Organizer can add entries",
+      "max_per_user": "Respect maxEntriesPerUser setting"
+    },
+    "winner_selection": {
+      "filter_entries": "Remove existing winners if prevent_duplicate_winners",
+      "shuffle": "Fisher-Yates cryptographic shuffle",
+      "select_by_tier": "Grand → First → Second → Third → Consolation",
+      "mark_winners": "Update is_winner flag and prize_tier",
+      "create_records": "Insert into winners table"
+    },
+    "redraw": {
+      "reason": "Winner unavailable",
+      "process": "Mark previous as replaced, select new from eligible",
+      "exclusion": "Previous winner fingerprints excluded"
+    }
+  },
+
+  "apiEndpoints": {
+    "config": {
+      "get": "GET /api/events/[eventId]/lucky-draw/config",
+      "create": "POST /api/events/[eventId]/lucky-draw/config",
+      "update": "PATCH /api/events/[eventId]/lucky-draw/config"
+    },
+    "entries": {
+      "list": "GET /api/events/[eventId]/lucky-draw/entries",
+      "create": "POST /api/events/[eventId]/lucky-draw/entries",
+      "user_entries": "GET /api/events/[eventId]/lucky-draw/participants"
+    },
+    "execution": {
+      "execute": "POST /api/events/[eventId]/lucky-draw",
+      "redraw": "POST /api/events/[eventId]/lucky-draw/redraw"
+    },
+    "results": {
+      "winners": "GET /api/events/[eventId]/lucky-draw/history",
+      "stats": "GET /api/events/[eventId]/lucky-draw/participants"
+    }
+  },
+
+  "uiComponents": {
+    "main": "components/lucky-draw/LuckyDraw.tsx",
+    "animations": {
+      "default": "components/lucky-draw/DrawAnimation.tsx",
+      "slot_machine": "components/lucky-draw/SlotMachineAnimation.tsx"
+    },
+    "admin": "components/lucky-draw/admin/LuckyDrawAdminTab.tsx",
+    "entry_form": "components/lucky-draw/LuckyDrawEntryForm.tsx"
+  },
+
+  "animationStyles": {
+    "spinning_wheel": "Rotating wheel with segments",
+    "slot_machine": "Rolling slot machine reels",
+    "confetti": "Enabled by default on winner reveal",
+    "sound": "Enabled by default",
+    "duration": "8 seconds (configurable)"
+  },
+
+  "displayOptions": {
+    "show_selfie": "Show winner's photo",
+    "show_full_name": "Show winner's full name",
+    "play_sound": "Play celebration sound",
+    "confetti_animation": "Show confetti effect"
+  },
+
+  "securityConsiderations": [
+    "Use cryptographic randomness (crypto.randomInt)",
+    "Prevent duplicate entries per config per photo",
+    "Respect max entries per user limit",
+    "Validate organizer permission before draw execution",
+    "Log all draw executions for audit",
+    "Prevent modifying completed draws"
+  ],
+
+  "commonTasks": [
+    "Add custom animation styles",
+    "Implement scheduled draw execution (cron)",
+    "Add winner notification emails/SMS",
+    "Create draw replay feature",
+    "Add probability calculator",
+    "Implement weighted entries",
+    "Add group draw (multiple events)"
+  ],
+
+  "relatedAgents": [
+    "event-management-agent",
+    "photo-processing-agent",
+    "multi-tenant-agent"
+  ],
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Fisher-Yates shuffle randomness",
+      "Prize tier ordering",
+      "Duplicate entry prevention",
+      "Winner selection logic"
+    ],
+    "integration_tests": [
+      "Full draw execution",
+      "Redraw functionality",
+      "Entry creation limits"
+    ]
+  },
+
+  "statistics": {
+    "total_entries": "COUNT(*) from lucky_draw_entries",
+    "unique_participants": "COUNT(DISTINCT user_fingerprint)",
+    "total_draws": "COUNT(*) of completed configs",
+    "total_winners": "COUNT(*) from winners"
+  }
+}

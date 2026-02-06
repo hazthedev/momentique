@@ -1,0 +1,175 @@
+{
+  "name": "attendance-agent",
+  "displayName": "Attendance Agent",
+  "version": "1.0.0",
+  "description": "Handles event check-in system including QR code scanning, manual entry, guest management, and attendance analytics",
+  "icon": "clipboard-check",
+  "color": "#06b6d4",
+
+  "responsibilities": [
+    "QR code-based check-in",
+    "Manual guest entry",
+    "Guest list management",
+    "Companion count tracking",
+    "Check-in method tracking",
+    "Attendance analytics",
+    "Attendance export",
+    "Guest information storage",
+    "Unique constraint enforcement (one per guest per event)"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/qrcode.ts"
+    ],
+    "schema": [
+      "drizzle/schema.ts:attendances (see migrations)"
+    ],
+    "api": [
+      "app/api/events/[eventId]/attendance/**/route.ts"
+    ],
+    "components": [
+      "components/attendance/**/*.tsx",
+      "components/attendance/**/*.ts"
+    ],
+    "pages": [
+      "app/attendances/[eventId]/checkin/page.tsx",
+      "app/organizer/events/[eventId]/attendance/**/page.tsx"
+    ]
+  },
+
+  "expertise": {
+    "check_in_methods": {
+      "qr_scan": "Organizer scans guest QR code",
+      "manual_entry": "Organizer enters guest details manually",
+      "self_check_in": "Guest scans event QR code (future)"
+    },
+    "guest_info": {
+      "name": "Guest full name",
+      "email": "Guest email (optional)",
+      "phone": "Guest phone (optional)",
+      "companions": "Number of additional guests",
+      "check_in_time": "Timestamp of check-in",
+      "method": "How they checked in"
+    },
+    "constraints": {
+      "unique_per_event": "One attendance record per guest per event",
+      "enforced_by": "Database unique constraint"
+    }
+  },
+
+  "codePatterns": {
+    "check_in_url": "generateCheckInUrl(eventId) → /attendances/{eventId}/checkin",
+    "qr_code": "generateCheckInQRCodeUrl(eventId) → QR server API",
+    "check_in_code": "generateCheckInCode(eventId) → 6-character code",
+    "attendance_create": "POST to attendance API with guest info",
+    "stats_calculation": "Aggregate queries on attendances table"
+  },
+
+  "businessLogic": {
+    "check_in_workflow": {
+      "guest": "Scans QR code or provides info",
+      "system": "Creates attendance record",
+      "organizer": "Sees real-time attendance count",
+      "analytics": "Track attendance over time"
+    },
+    "companion_handling": {
+      "count": "Number of additional guests",
+      "included_in_total": "Yes (count + 1 for main guest)",
+      "display": "Show separately in stats"
+    }
+  },
+
+  "apiEndpoints": {
+    "check_in": {
+      "create": "POST /api/events/[eventId]/attendance",
+      "manual": "POST /api/events/[eventId]/attendance/manual"
+    },
+    "list": {
+      "all": "GET /api/events/[eventId]/attendance",
+      "stats": "GET /api/events/[eventId]/attendance/stats",
+      "export": "GET /api/events/[eventId]/attendance/export"
+    }
+  },
+
+  "uiComponents": {
+    "guest": "app/attendances/[eventId]/checkin/page.tsx - Guest check-in page",
+    "organizer": {
+      "checkin_modal": "components/attendance/CheckInModal.tsx",
+      "qr_scanner": "components/attendance/OrganizerQRScanner.tsx",
+      "admin_tab": "components/attendance/AttendanceAdminTab.tsx",
+      "sidebar": "components/attendance/AttendanceSidebarLayout.tsx"
+    },
+    "pages": {
+      "main": "app/organizer/events/[eventId]/attendance/page.tsx",
+      "guests": "app/organizer/events/[eventId]/attendance/guests/page.tsx",
+      "qr": "app/organizer/events/[eventId]/attendance/qr/page.tsx"
+    }
+  },
+
+  "qrCodeFlow": {
+    "generation": "generateCheckInQRCodeUrl() creates QR pointing to check-in URL",
+    "display": "Organizer shows QR code to guests",
+    "scan": "Guest scans with phone camera",
+    "redirect": "Opens check-in page with eventId pre-filled",
+    "submit": "Guest fills info and submits",
+    "confirm": "Attendance record created"
+  },
+
+  "statistics": {
+    "total_guests": "SUM(companions + 1)",
+    "unique_guests": "COUNT(*) of attendance records",
+    "check_in_by_time": "Group by hour for attendance curve",
+    "method_breakdown": "Count by check-in method"
+  },
+
+  "export": {
+    "format": "CSV",
+    "fields": ["name", "email", "phone", "companions", "check_in_time", "method"],
+    "filename": "attendance-{event-name}-{date}.csv"
+  },
+
+  "securityConsiderations": [
+    "One check-in per guest per event (enforced by DB constraint)",
+    "Guest PII should be protected",
+    "Only organizers can view full attendance list",
+    "Export should be authenticated",
+    "Rate limit check-in submissions to prevent spam"
+  ],
+
+  "commonTasks": [
+    "Add self check-in via guest phone",
+    "Implement pre-registration system",
+    "Add waitlist functionality",
+    "Create attendance certificate PDF",
+    "Add attendance email reminders",
+    "Implement group check-in",
+    "Add attendance heat map",
+    "Create VIP guest tracking"
+  ],
+
+  "relatedAgents": [
+    "event-management-agent",
+    "photo-challenge-agent",
+    "multi-tenant-agent"
+  ],
+
+  "integrationPoints": {
+    "events": "Attendance belongs to event",
+    "photo_challenge": "Can link attendance to challenge participants",
+    "qr_codes": "Shared QR generation utilities"
+  },
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "QR code URL generation",
+      "Unique constraint enforcement",
+      "Companion count calculation"
+    ],
+    "integration_tests": [
+      "Full check-in workflow",
+      "Manual entry flow",
+      "Export functionality"
+    ]
+  }
+}

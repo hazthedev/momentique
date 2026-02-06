@@ -24,13 +24,34 @@ import {
   Heart,
   Download,
   User,
+  UserCheck,
+  Gift,
+  Target,
 } from 'lucide-react';
+import { PhotoChallengeProgressBar } from '@/components/photo-challenge/progress-bar';
+import { PhotoChallengePrizeModal } from '@/components/photo-challenge/prize-modal';
 import clsx from 'clsx';
-import type { IEvent, IPhoto } from '@/lib/types';
+import { motion, AnimatePresence } from 'motion/react';
+import type { IEvent, IPhoto, IPhotoChallenge, IGuestPhotoProgress } from '@/lib/types';
 import { getClientFingerprint } from '@/lib/fingerprint';
 import { Recaptcha } from '@/components/auth/Recaptcha';
 import { useLuckyDraw } from '@/lib/realtime/client';
 import { SlotMachineAnimation } from '@/components/lucky-draw/SlotMachineAnimation';
+import { CheckInModal } from '@/components/attendance/CheckInModal';
+import {
+  photoCardVariants,
+  modalBackdropVariants,
+  modalContentVariants,
+  luckyNumberVariants,
+  heartBurstVariants,
+  heartParticleVariants,
+  floatingButtonVariants,
+  fileCardVariants,
+  counterVariants,
+  greetingModalVariants,
+  springConfigs,
+  createParticleBurst,
+} from '@/lib/animations';
 
 // ============================================
 // TYPES
@@ -220,11 +241,22 @@ function GuestNameModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div
-        className="w-full max-w-md rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in duration-200"
-        style={{ backgroundColor: themeSurface, color: surfaceText, borderColor: surfaceBorder }}
+    <AnimatePresence>
+      <motion.div
+        variants={modalBackdropVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       >
+        <motion.div
+          variants={greetingModalVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
+          style={{ backgroundColor: themeSurface, color: surfaceText, borderColor: surfaceBorder }}
+        >
         <div className="mb-6 text-center">
           <div
             className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
@@ -321,8 +353,9 @@ function GuestNameModal({
             Continue
           </button>
         </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -348,6 +381,8 @@ export default function GuestEventPage() {
   const [error, setError] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -360,6 +395,9 @@ export default function GuestEventPage() {
   const [hasJoinedDraw, setHasJoinedDraw] = useState(false);
   const [luckyDrawNumbers, setLuckyDrawNumbers] = useState<string[]>([]);
   const [hasActiveLuckyDrawConfig, setHasActiveLuckyDrawConfig] = useState<boolean | null>(null);
+  const [photoChallenge, setPhotoChallenge] = useState<IPhotoChallenge | null>(null);
+  const [challengeProgress, setChallengeProgress] = useState<IGuestPhotoProgress | null>(null);
+  const [showPrizeModal, setShowPrizeModal] = useState(false);
   const fingerprint = useMemo(() => getClientFingerprint(), []);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
@@ -382,6 +420,7 @@ export default function GuestEventPage() {
   const allowAnonymous = event?.settings?.features?.anonymous_allowed !== false;
   const moderationRequired = event?.settings?.features?.moderation_required || false;
   const luckyDrawEnabled = event?.settings?.features?.lucky_draw_enabled !== false;
+  const attendanceEnabled = event?.settings?.features?.attendance_enabled !== false;
   const photoCardStyle = event?.settings?.theme?.photo_card_style || 'vacation';
   const themePrimary = event?.settings?.theme?.primary_color || '#8B5CF6';
   const themeSecondary = event?.settings?.theme?.secondary_color || '#EC4899';
@@ -497,6 +536,80 @@ export default function GuestEventPage() {
     };
     loadLuckyDrawConfig();
   }, [resolvedEventId, luckyDrawEnabled]);
+
+  // Load photo challenge config and progress
+  useEffect(() => {
+    if (!resolvedEventId || !fingerprint) return;
+    const photoChallengeEnabled = event?.settings?.features?.photo_challenge_enabled;
+    if (!photoChallengeEnabled) return;
+
+    const loadPhotoChallenge = async () => {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (fingerprint) headers['x-fingerprint'] = fingerprint;
+        if (event?.tenant_id) headers['x-tenant-id'] = event.tenant_id;
+
+        const [configRes, progressRes] = await Promise.all([
+          fetch(`/api/events/${resolvedEventId}/photo-challenge`, { headers }),
+          fetch(`/api/events/${resolvedEventId}/photo-challenge/progress`, { headers }),
+        ]);
+
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          setPhotoChallenge(configData.data);
+        } else {
+          console.error('[GUEST_EVENT] Photo challenge config fetch failed:', configRes.status, await configRes.text());
+        }
+
+        if (progressRes.ok) {
+          const progressData = await progressRes.json();
+          setChallengeProgress(progressData.data);
+        } else {
+          console.error('[GUEST_EVENT] Photo challenge progress fetch failed:', progressRes.status, await progressRes.text());
+        }
+      } catch (err) {
+        console.error('[GUEST_EVENT] Photo challenge fetch failed:', err);
+      }
+    };
+    loadPhotoChallenge();
+  }, [resolvedEventId, fingerprint, event]);
+
+  // Show prize modal when goal is reached (auto-grant only)
+  useEffect(() => {
+    if (!photoChallenge?.auto_grant || !challengeProgress) return;
+    if (challengeProgress.goal_reached && !challengeProgress.prize_claimed_at && !challengeProgress.prize_revoked) {
+      setShowPrizeModal(true);
+    }
+  }, [photoChallenge, challengeProgress]);
+
+  // Check if user has already checked in
+  useEffect(() => {
+    if (!resolvedEventId || !fingerprint || !attendanceEnabled) return;
+
+    const checkAttendanceStatus = async () => {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (fingerprint) headers['x-fingerprint'] = fingerprint;
+
+        const response = await fetch(`/api/events/${resolvedEventId}/attendance/my`, { headers });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data) {
+            setHasCheckedIn(true);
+            // Mark user as non-anonymous after check-in so progress bar shows
+            setIsAnonymous(false);
+            // Store the guest name from attendance
+            if (data.data.guest_name) {
+              setGuestName(data.data.guest_name);
+            }
+          }
+        }
+      } catch (err) {
+        console.debug('[GUEST_EVENT] Attendance check failed:', err);
+      }
+    };
+    checkAttendanceStatus();
+  }, [resolvedEventId, fingerprint, attendanceEnabled]);
 
   useEffect(() => {
     if (hasActiveLuckyDrawConfig === false && joinLuckyDraw) {
@@ -1456,8 +1569,12 @@ export default function GuestEventPage() {
               {luckyDrawNumbers.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {luckyDrawNumbers.map((number, index) => (
-                    <span
+                    <motion.span
                       key={`${number}-${index}`}
+                      custom={index}
+                      variants={luckyNumberVariants}
+                      initial="hidden"
+                      animate="visible"
                       className="rounded-full px-4 py-2 text-sm font-semibold shadow-sm ring-1"
                       style={{
                         backgroundColor: themeSecondary,
@@ -1466,7 +1583,7 @@ export default function GuestEventPage() {
                       }}
                     >
                       #{number}
-                    </span>
+                    </motion.span>
                   ))}
                 </div>
               ) : hasJoinedDraw ? (
@@ -1590,13 +1707,19 @@ export default function GuestEventPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {mergedPhotos.map((photo) => {
+                {mergedPhotos.map((photo, index) => {
                   const userLoveCount = userLoves[photo.id] || 0;
                   const totalHeartCount = photo.reactions?.heart || 0;
 
                   return (
-                    <div
+                    <motion.div
                       key={photo.id}
+                      custom={index}
+                      variants={photoCardVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover="hover"
+                      whileTap="tap"
                       onDoubleClick={() => {
                         if (photo.status !== 'approved') return;
                         handleLoveReaction(photo.id);
@@ -1691,9 +1814,26 @@ export default function GuestEventPage() {
                       {/* Heart Burst Animation (on double-click) */}
                       {animatingPhotos.has(photo.id) && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                          <Heart
-                            className="h-20 w-20 fill-pink-500 text-pink-500 drop-shadow-lg animate-[heartBurst_0.8s_ease-out_forwards]"
-                          />
+                          {/* Central heart */}
+                          <motion.div
+                            variants={heartBurstVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="flex items-center justify-center"
+                          >
+                            <Heart className="h-20 w-20 fill-pink-500 text-pink-500 drop-shadow-lg" />
+                          </motion.div>
+                          {/* Particle hearts */}
+                          {createParticleBurst(8).map((angle, i) => (
+                            <motion.div
+                              key={i}
+                              className="absolute top-1/2 left-1/2"
+                              style={{ marginLeft: -12, marginTop: -12 }}
+                              {...heartParticleVariants(angle, 50)}
+                            >
+                              <Heart className="h-6 w-6 fill-pink-400 text-pink-400 drop-shadow-md" />
+                            </motion.div>
+                          ))}
                         </div>
                       )}
 
@@ -1706,7 +1846,7 @@ export default function GuestEventPage() {
                           )}
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -1738,12 +1878,24 @@ export default function GuestEventPage() {
       </div>
 
       {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div
-            className="w-full max-w-md rounded-2xl p-6 shadow-xl"
-            style={{ backgroundColor: themeSurface, color: surfaceText, borderColor: surfaceBorder }}
-          >
+      <AnimatePresence>
+        {showShareModal && (
+          <>
+            <motion.div
+              variants={modalBackdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            >
+              <motion.div
+                variants={modalContentVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="w-full max-w-md rounded-2xl p-6 shadow-xl"
+                style={{ backgroundColor: themeSurface, color: surfaceText, borderColor: surfaceBorder }}
+              >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold" style={{ color: surfaceText }}>
                 Share Event
@@ -1777,17 +1929,31 @@ export default function GuestEventPage() {
                 Copy Link
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        </>
+        )}
+      </AnimatePresence>
 
       {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div
-            className="w-full max-w-md rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto"
-            style={{ backgroundColor: themeSurface, color: surfaceText, borderColor: surfaceBorder }}
-          >
+      <AnimatePresence>
+        {showUploadModal && (
+          <>
+            <motion.div
+              variants={modalBackdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            >
+              <motion.div
+                variants={modalContentVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="w-full max-w-md rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto"
+                style={{ backgroundColor: themeSurface, color: surfaceText, borderColor: surfaceBorder }}
+              >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold" style={{ color: surfaceText }}>
                 Upload Photo
@@ -1814,12 +1980,12 @@ export default function GuestEventPage() {
 
             {/* Success Message */}
             {uploadSuccess && (
-              <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 p-3 text-green-800 dark:bg-green-900/20 dark:text-green-300">
-                <Check className="h-5 w-5 flex-shrink-0" />
-                <p className="text-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Check className="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" />
+                <p className="text-sm font-medium" style={{ color: surfaceText }}>
                   {uploadSuccessMessage}
                   {optimizedCount > 0 && (
-                    <span className="ml-2 text-xs text-green-700 dark:text-green-300">
+                    <span className="ml-2 text-xs" style={{ color: surfaceMuted }}>
                       Optimized {optimizedCount} photo{optimizedCount > 1 ? 's' : ''} for upload.
                     </span>
                   )}
@@ -1836,18 +2002,24 @@ export default function GuestEventPage() {
 
             {/* Uploading State */}
             {isUploading && (
-              <div className="mb-4 flex flex-col items-center gap-3 rounded-lg bg-violet-50 p-6 dark:bg-violet-900/20">
-                <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
-                <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+              <div
+                className="mb-4 flex flex-col items-center gap-3 rounded-lg p-6"
+                style={{ backgroundColor: inputBackground }}
+              >
+                <Loader2 className="h-10 w-10 animate-spin" style={{ color: themeSecondary }} />
+                <p className="text-sm font-medium text-gray-900">
                   Uploading photos...
                 </p>
               </div>
             )}
 
             {isOptimizing && (
-              <div className="mb-4 flex flex-col items-center gap-3 rounded-lg bg-amber-50 p-6 dark:bg-amber-900/20">
-                <Loader2 className="h-10 w-10 animate-spin text-amber-600" />
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              <div
+                className="mb-4 flex flex-col items-center gap-3 rounded-lg p-6"
+                style={{ backgroundColor: inputBackground }}
+              >
+                <Loader2 className="h-10 w-10 animate-spin" style={{ color: themeSecondary }} />
+                <p className="text-sm font-medium text-gray-900">
                   Optimizing large photos...
                 </p>
               </div>
@@ -1862,11 +2034,17 @@ export default function GuestEventPage() {
                       Selected Photos ({selectedFiles.length}/5)
                     </p>
                     <div className="grid grid-cols-3 gap-2">
-                      {selectedFiles.map((file, index) => (
-                        <div
-                          key={index}
-                          className="relative aspect-square rounded-lg overflow-hidden"
-                          style={{ backgroundColor: inputBackground }}
+                      <AnimatePresence>
+                        {selectedFiles.map((file, index) => (
+                          <motion.div
+                            key={index}
+                            variants={fileCardVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            custom={index}
+                            className="relative aspect-square rounded-lg overflow-hidden"
+                            style={{ backgroundColor: inputBackground }}
                         >
                           <Image
                             src={file.preview}
@@ -1880,8 +2058,9 @@ export default function GuestEventPage() {
                           >
                             <X className="h-3 w-3" />
                           </button>
-                        </div>
+                        </motion.div>
                       ))}
+                      </AnimatePresence>
                     </div>
                   </div>
                 )}
@@ -1987,6 +2166,20 @@ export default function GuestEventPage() {
                   </div>
                 )}
 
+                {/* Photo Challenge Progress Bar */}
+                {photoChallenge?.enabled && (
+                  <PhotoChallengeProgressBar
+                    challenge={photoChallenge}
+                    progress={challengeProgress}
+                    themePrimary={themePrimary}
+                    themeSecondary={themeSecondary}
+                    surfaceText={surfaceText}
+                    surfaceMuted={surfaceMuted}
+                    surfaceBorder={surfaceBorder}
+                    inputBackground={inputBackground}
+                  />
+                )}
+
                 {allowAnonymous && isAnonymous && (
                   <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
                     <p className="text-xs text-amber-800 dark:text-amber-300">
@@ -2035,30 +2228,112 @@ export default function GuestEventPage() {
                   </button>
                 )}
 
-                <p className="text-xs text-center" style={{ color: surfaceMuted }}>
-                  Up to 5 photos, max 10MB each
-                </p>
+                {/* Photos Remaining Info */}
+                {(() => {
+                  const userLimit = event?.settings?.limits?.max_photos_per_user;
+                  const userPhotos = mergedPhotos.filter(photo => photo.user_fingerprint === `guest_${fingerprint}`).length;
+                  const remaining = userLimit === null || userLimit === undefined
+                    ? `${userPhotos} uploaded`
+                    : Math.max(0, userLimit - userPhotos);
+
+                  return (
+                    <p className="text-xs text-center" style={{ color: surfaceMuted }}>
+                      {typeof remaining === 'string'
+                        ? `${remaining}`
+                        : `${remaining} photo${userPhotos === 1 && typeof remaining !== 'string' && remaining > 1 ? '' : 's'} remaining`}
+                    </p>
+                  );
+                })()}
               </div>
             )}
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        </>
+        )}
+      </AnimatePresence>
 
       {/* Floating Camera Button */}
       {event?.settings?.features?.photo_upload_enabled !== false && (
-        <button
+        <motion.button
           onClick={() => {
             setShowUploadModal(true);
             setRecaptchaToken(null);
             setRecaptchaError(null);
           }}
-          className="fixed bottom-6 right-6 z-40 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-2xl transition-all hover:scale-110 active:scale-95"
+          animate="idle"
+          whileHover="hover"
+          whileTap="tap"
+          variants={floatingButtonVariants}
+          className="fixed bottom-6 right-6 z-40 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-2xl"
           style={{ backgroundImage: `linear-gradient(135deg, ${themePrimary}, ${themeSecondary})` }}
           aria-label="Quick photo upload"
         >
           <Camera className="h-8 w-8" />
-        </button>
+        </motion.button>
       )}
+
+      {/* Check-in Button */}
+      {attendanceEnabled && !hasCheckedIn && (
+        <motion.button
+          onClick={() => setShowCheckInModal(true)}
+          animate="idle"
+          whileHover="hover"
+          whileTap="tap"
+          variants={floatingButtonVariants}
+          className="fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-emerald-700 md:bottom-6 md:left-6"
+          aria-label="Check in"
+        >
+          <UserCheck className="h-5 w-5" />
+          <span>Check In</span>
+        </motion.button>
+      )}
+
+      {/* Checked-in Badge */}
+      {attendanceEnabled && hasCheckedIn && (
+        <div className="fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-full bg-emerald-100 px-5 py-3 text-sm font-semibold text-emerald-800 shadow-lg md:bottom-6 md:left-6 dark:bg-emerald-900/30 dark:text-emerald-300">
+          <Check className="h-5 w-5" />
+          <span>Checked In</span>
+        </div>
+      )}
+
+      {/* Check-in Modal */}
+      <AnimatePresence>
+        {showCheckInModal && (
+          <CheckInModal
+            eventId={resolvedEventId || ''}
+            onClose={() => setShowCheckInModal(false)}
+            onSuccess={() => {
+              setHasCheckedIn(true);
+              setShowCheckInModal(false);
+              // Mark user as non-anonymous after check-in so progress bar shows
+              setIsAnonymous(false);
+              // Store the check-in status in localStorage for persistence
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(`event_${resolvedEventId}_checked_in`, 'true');
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Photo Challenge Prize Modal */}
+      <AnimatePresence>
+        {showPrizeModal && photoChallenge && challengeProgress && resolvedEventId && (
+          <PhotoChallengePrizeModal
+            isOpen={showPrizeModal}
+            onClose={() => setShowPrizeModal(false)}
+            challenge={photoChallenge}
+            progress={challengeProgress}
+            eventId={resolvedEventId}
+            tenantId={event?.tenant_id}
+            themePrimary={themePrimary}
+            themeSecondary={themeSecondary}
+            themeSurface={themeSurface}
+            surfaceText={surfaceText}
+            surfaceMuted={surfaceMuted}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

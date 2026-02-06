@@ -1,0 +1,127 @@
+{
+  "name": "auth-security-agent",
+  "displayName": "Auth & Security Agent",
+  "version": "1.0.0",
+  "description": "Handles authentication, authorization, session management, and security features across the Momentique platform",
+  "icon": "shield",
+  "color": "#ef4444",
+
+  "responsibilities": [
+    "JWT token generation and validation",
+    "Password hashing with bcrypt",
+    "Session management (Redis)",
+    "Role-based access control (RBAC)",
+    "Magic link authentication",
+    "Password reset flows",
+    "Email verification",
+    "Token refresh mechanisms",
+    "Authorization header parsing",
+    "Session hijacking prevention"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/auth.ts",
+      "lib/session.ts",
+      "middleware.ts",
+      "lib/protected-route.tsx",
+      "lib/auth-context.tsx"
+    ],
+    "api": [
+      "app/api/auth/**/*.ts",
+      "app/api/auth/**/route.ts"
+    ],
+    "components": [
+      "components/auth/**/*.tsx",
+      "components/auth/**/*.ts"
+    ],
+    "pages": [
+      "app/auth/**/page.tsx",
+      "app/auth/login/**",
+      "app/auth/register/**"
+    ]
+  },
+
+  "expertise": {
+    "authentication": {
+      "jwt": {
+        "access_token_expires": "15 minutes",
+        "refresh_token_expires": "7 days",
+        "algorithm": "RS256",
+        "issuer": "gatherly.app",
+        "audience": "gatherly-api"
+      },
+      "password": {
+        "hashing": "bcrypt",
+        "salt_rounds": 12,
+        "min_length": 8
+      },
+      "roles": ["guest", "organizer", "super_admin"]
+    },
+    "security": {
+      "token_validation": ["expiration", "signature", "issuer"],
+      "session_storage": "Redis",
+      "csrf_protection": "required",
+      "rate_limiting": "enabled"
+    }
+  },
+
+  "codePatterns": {
+    "token_generation": "Use generateTokens() from lib/auth.ts",
+    "password_hashing": "Use hashPassword() from lib/auth.ts",
+    "authentication_check": "Use requireAuthForApi() from lib/auth.ts",
+    "role_check": "Use hasRole() or hasModeratorRole() from lib/auth.ts",
+    "session_validation": "Use validateSession() from lib/session.ts"
+  },
+
+  "securityConsiderations": [
+    "Never log tokens or passwords",
+    "Always use HTTPS in production",
+    "Validate token expiration on every request",
+    "Use crypto.randomInt for cryptographic randomness",
+    "Implement rate limiting on auth endpoints",
+    "Set secure cookie flags (HttpOnly, Secure, SameSite)",
+    "Rotate refresh tokens after use",
+    "Implement token revocation for logout"
+  ],
+
+  "commonTasks": [
+    "Add new authentication method (e.g., OAuth)",
+    "Implement SSO for enterprise tenants",
+    "Add 2FA/MFA support",
+    "Implement session timeout warnings",
+    "Add device fingerprinting for fraud detection",
+    "Create audit logs for sensitive actions",
+    "Implement IP-based rate limiting",
+    "Add account lockout after failed attempts"
+  ],
+
+  "relatedAgents": [
+    "multi-tenant-agent",
+    "admin-dashboard-agent"
+  ],
+
+  "integrationPoints": {
+    "multi_tenant": "Tenant ID embedded in JWT payload",
+    "admin": "Super admin role bypasses tenant restrictions",
+    "api": "All API routes use requireAuthForApi() middleware"
+  },
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Token generation and validation",
+      "Password hashing and comparison",
+      "Role checking logic"
+    ],
+    "integration_tests": [
+      "Login/logout flow",
+      "Token refresh flow",
+      "Session management"
+    ],
+    "security_tests": [
+      "Token expiration enforcement",
+      "Invalid token rejection",
+      "Role-based access enforcement"
+    ]
+  }
+}

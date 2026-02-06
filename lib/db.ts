@@ -12,10 +12,12 @@ import type { ITenant } from './types';
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  min: parseInt(process.env.DATABASE_POOL_MIN || '0', 10),
-  max: parseInt(process.env.DATABASE_POOL_MAX || '5', 10),
+  min: parseInt(process.env.DATABASE_POOL_MIN || '2', 10),
+  max: parseInt(process.env.DATABASE_POOL_MAX || '20', 10),
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 30000,  // Increased from 2000ms to 30s
+  statement_timeout: 60000,  // 60 second query timeout
+  query_timeout: 60000,  // 60 second query timeout
 };
 
 // ============================================
@@ -55,19 +57,34 @@ export function getPool(): Pool {
 
     pool.on('error', (err) => {
       console.error('[DB] Unexpected error on idle client', err);
-      // Only call process.exit in Node.js runtime, not Edge Runtime
-      if (typeof process !== 'undefined' && process.exit) {
-        process.exit(-1);
-      }
+      // Don't exit in production - let the application handle it
+      // The pool will automatically create a new connection
     });
 
-    pool.on('connect', () => {
-      console.log('[DB] New client connected');
+    pool.on('connect', (client) => {
+      console.log('[DB] New client connected', {
+        totalCount: pool?.totalCount ?? 0,
+        idleCount: pool?.idleCount ?? 0,
+        waitingCount: pool?.waitingCount ?? 0
+      });
     });
 
     pool.on('remove', () => {
       console.log('[DB] Client removed');
     });
+
+    // Log pool statistics every 30 seconds
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+      setInterval(() => {
+        if (pool) {
+          console.log('[DB] Pool stats:', {
+            totalCount: pool.totalCount,
+            idleCount: pool.idleCount,
+            waitingCount: pool.waitingCount
+          });
+        }
+      }, 30000);
+    }
   }
 
   return pool;
@@ -86,31 +103,91 @@ export class TenantDatabase {
 
   /**
    * Execute a query with tenant isolation
+   * IMPORTANT: This properly manages connection checkout/release
+   * to ensure set_tenant_id and the actual query run on the SAME connection.
    */
   async query<T extends QueryResultRow = Record<string, unknown>>(
     text: string,
     params?: unknown[]
   ): Promise<QueryResult<T>> {
-    const poolClient = await getPool();
+    const pool = getPool();
+    const client = await pool.connect();
 
     try {
-      // Set tenant context for this connection
-      await poolClient.query('SELECT set_tenant_id($1)', [this.tenantId]);
+      // Set tenant context for THIS connection
+      await client.query('SELECT set_tenant_id($1)', [this.tenantId]);
 
-      // Execute the query
-      return await poolClient.query(text, params);
+      // Execute the query on the SAME connection
+      const result = await client.query(text, params);
+      return result;
     } catch (error) {
       console.error('[DB] Query error:', error);
       throw error;
+    } finally {
+      // Always release the connection back to the pool
+      client.release();
     }
   }
 
   /**
    * Get a connection from the pool
+   * WARNING: You MUST call client.release() when done!
+   * Consider using query() or transact() instead for automatic connection management.
+   *
+   * @example
+   * const client = await db.getClient();
+   * try {
+   *   await client.query('SELECT set_tenant_id($1)', [tenantId]);
+   *   // Do multiple operations...
+   * } finally {
+   *   client.release(); // IMPORTANT!
+   * }
    */
   async getClient(): Promise<PoolClient> {
     const pool = getPool();
     return await pool.connect();
+  }
+
+  /**
+   * Execute multiple queries in a transaction with automatic connection management
+   * @param callback Function that receives the client and should return the result
+   * @returns The result of the callback function
+   * @example
+   * const result = await db.transact(async (client) => {
+   *   await client.query('INSERT INTO users ...');
+   *   await client.query('UPDATE events ...');
+   *   return { success: true };
+   * });
+   */
+  async transact<T>(
+    callback: (client: PoolClient) => Promise<T>
+  ): Promise<T> {
+    const pool = getPool();
+    const client = await pool.connect();
+
+    try {
+      // Set tenant context
+      await client.query('SELECT set_tenant_id($1)', [this.tenantId]);
+
+      // Begin transaction
+      await client.query('BEGIN');
+
+      // Execute callback
+      const result = await callback(client);
+
+      // Commit transaction
+      await client.query('COMMIT');
+
+      return result;
+    } catch (error) {
+      // Rollback on error
+      await client.query('ROLLBACK');
+      console.error('[DB] Transaction error, rolled back:', error);
+      throw error;
+    } finally {
+      // Always release connection
+      client.release();
+    }
   }
 
   /**

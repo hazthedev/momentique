@@ -8,6 +8,7 @@ import { getTenantDb } from '@/lib/db';
 import { uploadImageToStorage, validateImageFile, validateUploadedImage, getTierValidationOptions } from '@/lib/images';
 import { generatePhotoId } from '@/lib/utils';
 import { createEntryFromPhoto } from '@/lib/lucky-draw';
+import { updateGuestProgress } from '@/lib/photo-challenge';
 import { verifyAccessToken } from '@/lib/auth';
 import { extractSessionId, validateSession } from '@/lib/session';
 import { checkPhotoLimit } from '@/lib/limit-check';
@@ -61,6 +62,10 @@ export async function POST(
           lucky_draw_enabled: boolean;
           moderation_required: boolean;
           anonymous_allowed: boolean;
+          reactions_enabled: boolean;
+          guest_download_enabled: boolean;
+          photo_challenge_enabled: boolean;
+          attendance_enabled: boolean;
         };
         limits: {
           max_photos_per_user: number;
@@ -83,6 +88,50 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    // Ensure settings exists (for backwards compatibility with old events)
+    if (!event.settings) {
+      event.settings = {
+        features: {
+          photo_upload_enabled: true,
+          lucky_draw_enabled: false,
+          moderation_required: false,
+          anonymous_allowed: true,
+          reactions_enabled: true,
+          guest_download_enabled: true,
+          photo_challenge_enabled: false,
+          attendance_enabled: false,
+        },
+        limits: {
+          max_photos_per_user: 100,
+          max_total_photos: 1000,
+        },
+      };
+    }
+    if (!event.settings.features) {
+      event.settings.features = {
+        photo_upload_enabled: true,
+        lucky_draw_enabled: false,
+        moderation_required: false,
+        anonymous_allowed: true,
+        reactions_enabled: true,
+        guest_download_enabled: true,
+        photo_challenge_enabled: false,
+        attendance_enabled: false,
+      };
+    }
+    if (!event.settings.limits) {
+      event.settings.limits = {
+        max_photos_per_user: 100,
+        max_total_photos: 1000,
+      };
+    }
+
+    // Ensure individual feature properties have defaults (for partial feature objects)
+    event.settings.features.photo_upload_enabled ??= true;
+    event.settings.features.lucky_draw_enabled ??= false;
+    event.settings.features.moderation_required ??= false;
+    event.settings.features.anonymous_allowed ??= true;
 
     // Check if photo uploads are enabled
     if (!event.settings.features.photo_upload_enabled) {
@@ -260,17 +309,7 @@ export async function POST(
       }
     }
 
-    const resolveEffectiveLimits = async () => {
-      const maxPerUser =
-        event.settings?.limits?.max_photos_per_user ??
-        100;
-
-      const maxTotalRaw =
-        event.settings?.limits?.max_total_photos ??
-        1000;
-
-      return { maxPerUser, maxTotalRaw };
-    };
+    // Per-user and per-event total limits removed; use tier + rate limits only.
 
     // ============================================
     // DIRECT UPLOAD METADATA (JSON)
@@ -353,35 +392,7 @@ export async function POST(
           );
         }
 
-        const { maxPerUser, maxTotalRaw } = await resolveEffectiveLimits();
-        const maxTotal = Math.min(
-          maxTotalRaw,
-          tierLimitResult.limit > 0 ? tierLimitResult.limit : Infinity
-        );
-
-        const userPhotoCount = await db.count('photos', {
-          event_id: eventId,
-          user_fingerprint: userId,
-        });
-
-        if (userPhotoCount + 1 > maxPerUser) {
-          return NextResponse.json(
-            { error: 'You have reached the maximum number of photos for this event', code: 'USER_LIMIT_REACHED' },
-            { status: 400 }
-          );
-        }
-
-        const totalPhotoCount = await db.count('photos', { event_id: eventId });
-        if (totalPhotoCount + 1 > maxTotal) {
-          return NextResponse.json(
-            {
-              error: 'This event has reached the maximum number of photos',
-              code: 'EVENT_LIMIT_REACHED',
-              upgradeRequired: tierLimitResult.limit > 0 && totalPhotoCount >= tierLimitResult.limit,
-            },
-            { status: 400 }
-          );
-        }
+        // Tier limit already enforced by checkPhotoLimit above.
       }
 
       const publicBase = process.env.R2_PUBLIC_URL || 'https://pub-xxxxxxxxx.r2.dev';
@@ -432,6 +443,25 @@ export async function POST(
           luckyDrawEntryId = entry?.id || null;
         } catch (entryError) {
           console.warn('[API] Lucky draw entry skipped:', entryError);
+        }
+      }
+
+      // ============================================
+      // PHOTO CHALLENGE PROGRESS TRACKING
+      // ============================================
+      let challengeGoalReached = false;
+      if (event.settings.features.photo_challenge_enabled && !isAnonymous && userId) {
+        try {
+          const { goalJustReached } = await updateGuestProgress(
+            db,
+            eventId,
+            userId,
+            !event.settings.features.moderation_required // Photo is approved if moderation is not required
+          );
+          challengeGoalReached = goalJustReached;
+          console.log('[PHOTO_CHALLENGE] Progress updated:', userId, goalJustReached ? 'Goal reached!' : '');
+        } catch (challengeError) {
+          console.warn('[API] Photo challenge progress update skipped:', challengeError);
         }
       }
 
@@ -574,38 +604,7 @@ export async function POST(
         );
       }
 
-      // Then check event-specific limits (per-user and total)
-      const { maxPerUser, maxTotalRaw } = await resolveEffectiveLimits();
-      const maxTotal = Math.min(
-        maxTotalRaw,
-        tierLimitResult.limit > 0 ? tierLimitResult.limit : Infinity
-      );
-
-      // Check per-user limit
-      const userPhotoCount = await db.count('photos', {
-        event_id: eventId,
-        user_fingerprint: userId,
-      });
-
-      if (userPhotoCount + uploadFiles.length > maxPerUser) {
-        return NextResponse.json(
-          { error: 'You have reached the maximum number of photos for this event', code: 'USER_LIMIT_REACHED' },
-          { status: 400 }
-        );
-      }
-
-      // Check total photos limit
-      const totalPhotoCount = await db.count('photos', { event_id: eventId });
-      if (totalPhotoCount + uploadFiles.length > maxTotal) {
-        return NextResponse.json(
-          {
-            error: 'This event has reached the maximum number of photos',
-            code: 'EVENT_LIMIT_REACHED',
-            upgradeRequired: tierLimitResult.limit > 0 && totalPhotoCount >= tierLimitResult.limit,
-          },
-          { status: 400 }
-        );
-      }
+      // Tier limit already enforced by checkPhotoLimit above.
     }
 
     const userAgent = headers.get('user-agent') || '';

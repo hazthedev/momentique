@@ -82,7 +82,7 @@ export const PRO_TIER_LIMITS: ITenantLimits = {
   max_events_per_month: 10,
   max_storage_gb: 50,
   max_admins: 3,
-  max_photos_per_event: 22,
+  max_photos_per_event: 100,
   max_draw_entries_per_event: 200,
   custom_features: [],
 };
@@ -91,7 +91,7 @@ export const PREMIUM_TIER_LIMITS: ITenantLimits = {
   max_events_per_month: 50,
   max_storage_gb: 200,
   max_admins: 10,
-  max_photos_per_event: 24,
+  max_photos_per_event: 500,
   max_draw_entries_per_event: 1000,
   custom_features: [],
 };

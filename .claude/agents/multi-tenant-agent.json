@@ -1,0 +1,173 @@
+{
+  "name": "multi-tenant-agent",
+  "displayName": "Multi-Tenant Agent",
+  "version": "1.0.0",
+  "description": "Manages multi-tenancy architecture including tenant resolution, subdomain routing, custom domains, and subscription tier enforcement",
+  "icon": "building",
+  "color": "#8b5cf6",
+
+  "responsibilities": [
+    "Tenant resolution from subdomain/custom domain",
+    "Tenant context injection via middleware",
+    "Feature flag management per tenant",
+    "Subscription tier enforcement",
+    "Tenant caching strategies",
+    "Tenant limits validation",
+    "Trial expiration handling",
+    "Domain/subdomain availability checking",
+    "Tenant branding configuration",
+    "Master tenant management"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/tenant.ts",
+      "lib/tier-config.ts",
+      "middleware.ts"
+    ],
+    "schema": [
+      "drizzle/schema.ts:59-109"
+    ],
+    "api": [
+      "app/api/admin/tenants/**/*.ts"
+    ]
+  },
+
+  "expertise": {
+    "tenantTypes": ["master", "white_label", "demo"],
+    "subscriptionTiers": ["free", "pro", "premium", "enterprise", "tester"],
+    "routing": {
+      "subdomain_format": "{tenant}.app.momentique.com",
+      "custom_domain": "events.{customer-domain}.com",
+      "master_domain": "app.momentique.com"
+    },
+    "cache": {
+      "ttl": "5 minutes",
+      "strategy": "in-memory Map with expiration"
+    }
+  },
+
+  "features": {
+    "by_tier": {
+      "free": {
+        "lucky_draw": false,
+        "photo_reactions": true,
+        "video_uploads": false,
+        "custom_templates": false,
+        "api_access": false,
+        "sso": false,
+        "white_label": false,
+        "advanced_analytics": false,
+        "max_events_per_month": 1,
+        "max_storage_gb": 1,
+        "max_admins": 1,
+        "max_photos_per_event": 20
+      },
+      "pro": {
+        "lucky_draw": true,
+        "photo_reactions": true,
+        "video_uploads": false,
+        "custom_templates": true,
+        "api_access": false,
+        "sso": false,
+        "white_label": true,
+        "advanced_analytics": true,
+        "max_events_per_month": 10,
+        "max_storage_gb": 50,
+        "max_admins": 3,
+        "max_photos_per_event": 500
+      },
+      "premium": {
+        "lucky_draw": true,
+        "photo_reactions": true,
+        "video_uploads": true,
+        "custom_templates": true,
+        "api_access": true,
+        "sso": false,
+        "white_label": true,
+        "advanced_analytics": true,
+        "max_events_per_month": 50,
+        "max_storage_gb": 200,
+        "max_admins": 10,
+        "max_photos_per_event": 2000
+      },
+      "enterprise": {
+        "lucky_draw": true,
+        "photo_reactions": true,
+        "video_uploads": true,
+        "custom_templates": true,
+        "api_access": true,
+        "sso": true,
+        "white_label": true,
+        "advanced_analytics": true,
+        "max_events_per_month": -1,
+        "max_storage_gb": -1,
+        "max_admins": -1,
+        "max_photos_per_event": -1
+      }
+    }
+  },
+
+  "architecturalPatterns": {
+    "tenant_isolation": "Row-Level Security (RLS) on PostgreSQL",
+    "context_propagation": "Headers injected by middleware",
+    "tenant_lookup": "subdomain → database → cache"
+  },
+
+  "codePatterns": {
+    "tenant_resolution": "resolveTenant() from lib/tenant.ts",
+    "tenant_context": "createTenantContext() from lib/tenant.ts",
+    "limit_validation": "validateTenantLimits() from lib/tenant.ts",
+    "feature_check": "Check tenant.features_enabled.{feature}",
+    "tier_check": "Check tenant.subscription_tier"
+  },
+
+  "middlewareHeaders": {
+    "x-tenant-id": "UUID of the tenant",
+    "x-tenant-type": "master | white_label | demo",
+    "x-tenant-tier": "free | pro | premium | enterprise | tester",
+    "x-tenant-branding": "JSON string of branding config",
+    "x-tenant-features": "JSON string of enabled features",
+    "x-tenant-limits": "JSON string of tier limits",
+    "x-is-custom-domain": "true | false",
+    "x-is-master": "true | false"
+  },
+
+  "securityConsiderations": [
+    "Never expose tenant_id in URLs (use slugs)",
+    "Validate tenant ownership on all operations",
+    "Implement tenant data isolation at DB level (RLS)",
+    "Cache tenant data with appropriate TTL",
+    "Handle suspended tenants gracefully",
+    "Validate custom domain ownership before enabling"
+  ],
+
+  "commonTasks": [
+    "Add new subscription tier",
+    "Implement custom domain verification",
+    "Add feature flag A/B testing",
+    "Create tenant usage analytics",
+    "Implement tier upgrade/downgrade logic",
+    "Add tenant onboarding workflow",
+    "Create tenant export/import functionality"
+  ],
+
+  "relatedAgents": [
+    "auth-security-agent",
+    "event-management-agent",
+    "admin-dashboard-agent"
+  ],
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Tenant subdomain extraction",
+      "Tenant cache operations",
+      "Limit validation logic"
+    ],
+    "integration_tests": [
+      "Custom domain routing",
+      "Tenant context propagation",
+      "Tier enforcement"
+    ]
+  }
+}

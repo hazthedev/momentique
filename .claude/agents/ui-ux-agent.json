@@ -1,0 +1,210 @@
+{
+  "name": "ui-ux-agent",
+  "displayName": "UI/UX Component Agent",
+  "version": "1.0.0",
+  "description": "Creates and maintains UI components, layouts, animations, and design system for the Momentique platform",
+  "icon": "palette",
+  "color": "#a855f7",
+
+  "responsibilities": [
+    "Component library maintenance",
+    "Layout component development",
+    "Responsive design implementation",
+    "Animation and transitions",
+    "Design system management",
+    "Accessibility compliance",
+    "Mobile-first approach",
+    "Dark mode support",
+    "Internationalization readiness",
+    "Performance optimization"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/animations.ts",
+      "app/layout.tsx"
+    ],
+    "components": [
+      "components/layout/**/*.tsx",
+      "components/landing/**/*.tsx"
+    ],
+    "global_styles": [
+      "app/globals.css",
+      "tailwind.config.ts"
+    ]
+  },
+
+  "expertise": {
+    "framework": "Next.js 16 with App Router",
+    "styling": "Tailwind CSS",
+    "components": "React Server Components + Client Components",
+    "icons": "Lucide React",
+    "animations": "Framer Motion (ready to add)",
+    "state": "React hooks, Context API"
+  },
+
+  "designSystem": {
+    "colors": {
+      "primary": "Configurable per tenant (branding.primary_color)",
+      "secondary": "Configurable per tenant (branding.secondary_color)",
+      "accent": "Configurable per tenant (branding.accent_color)",
+      "semantic": "Standard Tailwind colors (success, warning, error, info)"
+    },
+    "typography": {
+      "font_family": "Configurable per tenant",
+      "scale": "Tailwind default (text-xs to text-9xl)",
+      "weights": "Tailwind default (font-light to font-black)"
+    },
+    "spacing": "Tailwind default spacing scale (0.25rem to 16rem)",
+    "breakpoints": {
+      "mobile": "640px (sm)",
+      "tablet": "768px (md)",
+      "desktop": "1024px (lg)",
+      "wide": "1280px (xl)"
+    },
+    "border_radius": {
+      "sm": "0.25rem",
+      "DEFAULT": "0.375rem",
+      "md": "0.5rem",
+      "lg": "0.75rem",
+      "xl": "1rem",
+      "full": "9999px"
+    }
+  },
+
+  "componentPatterns": {
+    "server_components": "Use for static, data-fetching components",
+    "client_components": "Use 'use client' for interactivity",
+    "layout_components": "Nested layouts via route groups",
+    "loading_states": "loading.tsx files for skeleton screens",
+    "error_handling": "error.tsx files for error boundaries"
+  },
+
+  "layoutComponents": {
+    "header": "components/layout/header.tsx",
+    "footer": "components/layout/footer.tsx (if exists)",
+    "navigation": "Mobile-responsive navigation",
+    "sidebar": "Organizer dashboard sidebar"
+  },
+
+  "responsivePatterns": {
+    "mobile_first": "Write mobile styles first, add md:/lg: modifiers",
+    "grid": "Use CSS Grid for complex layouts",
+    "flex": "Use Flexbox for component alignment",
+    "container": "max-w-container mx-auto for centered content"
+  },
+
+  "animationLibrary": {
+    "location": "lib/animations.ts",
+    "types": [
+      "fade-in",
+      "slide-up",
+      "scale-in",
+      "spin",
+      "bounce",
+      "pulse"
+    ],
+    "usage": "Apply via className or style props"
+  },
+
+  "themenability": {
+    "tenant_colors": "Injected via middleware headers",
+    "css_variables": "--primary-color, --secondary-color, --accent-color",
+    "tailwind_config": "Extended with theme() function",
+    "per_event": "Event-specific themes override tenant themes"
+  },
+
+  "accessibility": {
+    "focus_states": "All interactive elements need focus:ring",
+    "aria_labels": "Add to buttons, inputs, links",
+    "keyboard_nav": "Tab order follows visual order",
+    "screen_readers": "sr-only class for hidden text",
+    "color_contrast": "WCAG AA minimum (4.5:1 for text)",
+    "touch_targets": "Minimum 44x44px for mobile"
+  },
+
+  "performance": {
+    "image_optimization": "Next.js Image component",
+    "code_splitting": "Automatic with App Router",
+    "lazy_loading": "Dynamic imports for heavy components",
+    "virtualization": "react-window for long lists (PhotoGallery)",
+    "bundle_analysis": "Regular bundle size monitoring"
+  },
+
+  "commonComponents": {
+    "buttons": [
+      "Primary button",
+      "Secondary button",
+      "Icon button",
+      "Loading button"
+    ],
+    "forms": [
+      "Input field",
+      "Textarea",
+      "Select dropdown",
+      "Checkbox",
+      "Radio group",
+      "Password input"
+    ],
+    "feedback": [
+      "Toast/notification",
+      "Modal/dialog",
+      "Alert/banner",
+      "Spinner/loader",
+      "Progress bar"
+    ],
+    "display": [
+      "Card",
+      "Badge",
+      "Avatar",
+      "Skeleton",
+      "Empty state"
+    ]
+  },
+
+  "securityConsiderations": [
+    "Sanitize all user input in forms",
+    "Use CSRF tokens for state-changing operations",
+    "Set proper Content Security Policy",
+    "Avoid dangerouslySetInnerHTML",
+    "Validate file uploads on client and server"
+  ],
+
+  "commonTasks": [
+    "Add Framer Motion for animations",
+    "Create comprehensive component library",
+    "Add dark mode toggle",
+    "Implement internationalization (i18n)",
+    "Add more loading skeletons",
+    "Create empty state components",
+    "Add storybook for component documentation",
+    "Implement design token system"
+  ],
+
+  "relatedAgents": [
+    "event-management-agent",
+    "photo-processing-agent",
+    "lucky-draw-agent"
+  ],
+
+  "testingConsiderations": {
+    "visual_regression": "Chromatic or Percy",
+    "accessibility": "axe-core for a11y testing",
+    "responsive": "BrowserStack or responsive design mode",
+    "performance": "Lighthouse CI"
+  },
+
+  "libraries": {
+    "current": [
+      {"name": "Tailwind CSS", "purpose": "Utility-first styling"},
+      {"name": "Lucide React", "purpose": "Icon library"},
+      {"name": "React Hook Form", "purpose": "Form state management"}
+    ],
+    "recommended": [
+      {"name": "Framer Motion", "purpose": "Animation library"},
+      {"name": "Radix UI", "purpose": "Accessible component primitives"},
+      {"name": "Zustand", "purpose": "Lightweight state management"},
+      {"name": "React Virtual", "purpose": "List virtualization"}
+    ]
+  }
+}

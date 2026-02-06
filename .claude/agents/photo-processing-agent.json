@@ -1,0 +1,194 @@
+{
+  "name": "photo-processing-agent",
+  "displayName": "Photo Processing Agent",
+  "version": "1.0.0",
+  "description": "Manages image processing, storage, validation, moderation, and multi-size generation for photo uploads",
+  "icon": "image",
+  "color": "#10b981",
+
+  "responsibilities": [
+    "Image upload and processing",
+    "Multi-size image generation (thumbnail, medium, full)",
+    "R2/S3 storage integration",
+    "EXIF data stripping for privacy",
+    "Content moderation (AWS Rekognition)",
+    "Tier-based quality limits",
+    "Corruption detection",
+    "Image validation",
+    "Presigned URL generation",
+    "Bulk photo operations",
+    "Photo reactions system"
+  ],
+
+  "filePatterns": {
+    "primary": [
+      "lib/images.ts",
+      "lib/upload/**",
+      "lib/upload/image-processor.ts",
+      "lib/upload/validator.ts"
+    ],
+    "schema": [
+      "drizzle/schema.ts:254-314"
+    ],
+    "api": [
+      "app/api/events/[eventId]/photos/**/route.ts",
+      "app/api/photos/**/route.ts"
+    ],
+    "components": [
+      "components/gallery/**/*.tsx",
+      "components/upload/**/*.tsx"
+    ]
+  },
+
+  "expertise": {
+    "image_sizes": {
+      "thumbnail": "150x150px (square, cover fit)",
+      "medium": "800px max dimension",
+      "full": "1920px max dimension"
+    },
+    "quality": {
+      "jpeg_quality": 85,
+      "output_format": "webp (tier dependent) or jpeg"
+    },
+    "storage": {
+      "provider": "Cloudflare R2 / S3",
+      "path_pattern": "{eventId}/{photoId}/{size}.{ext}",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    "supported_formats": ["image/jpeg", "image/png", "image/heic", "image/webp"]
+  },
+
+  "tierLimits": {
+    "free": {
+      "max_file_mb": 10,
+      "max_photos_per_event": 20,
+      "output_format": "jpeg"
+    },
+    "pro": {
+      "max_file_mb": 10,
+      "max_photos_per_event": 500,
+      "output_format": "jpeg"
+    },
+    "premium": {
+      "max_file_mb": 15,
+      "max_photos_per_event": 2000,
+      "output_format": "webp"
+    },
+    "enterprise": {
+      "max_file_mb": 25,
+      "max_photos_per_event": -1,
+      "output_format": "webp"
+    }
+  },
+
+  "codePatterns": {
+    "upload": "uploadImageToStorage() from lib/images.ts",
+    "presigned_url": "getPresignedUploadUrl() from lib/images.ts",
+    "validation": "validateUploadedImage() from lib/upload/validator.ts",
+    "processing": "processSecureImage() from lib/upload/image-processor.ts",
+    "delete": "deletePhotoAssets() from lib/images.ts",
+    "bulk_delete": "DELETE /api/events/[eventId]/photos/bulk-delete"
+  },
+
+  "securityFeatures": {
+    "exif_stripping": {
+      "enabled": true,
+      "verification": "verifyExifStripped() after processing",
+      "reason": "Protect user privacy (GPS, device info)"
+    },
+    "corruption_detection": {
+      "method": "Sharp error handling",
+      "action": "Reject upload if corrupted"
+    },
+    "content_moderation": {
+      "provider": "AWS Rekognition",
+      "labels": ["NSFW", "violence", "weapons"],
+      "threshold": 0.8
+    },
+    "rate_limiting": {
+      "endpoint": "per-event photo upload limit",
+      "enforcement": "tier-based max_photos_per_event"
+    }
+  },
+
+  "reactions": {
+    "types": ["heart", "clap", "laugh", "wow"],
+    "storage": "JSONB counter in photos table",
+    "api": "PATCH /api/photos/[id]/reactions"
+  },
+
+  "moderation": {
+    "status": ["pending", "approved", "rejected"],
+    "auto_moderate": "AWS Rekognition integration",
+    "manual_moderate": "Organizer/admin approval",
+    "logs": "photo_moderation_logs table"
+  },
+
+  "apiEndpoints": {
+    "upload": "POST /api/events/[eventId]/photos",
+    "presigned": "POST /api/events/[eventId]/photos/presign",
+    "list": "GET /api/events/[eventId]/photos",
+    "get": "GET /api/photos/[id]",
+    "approve": "POST /api/photos/[id]/approve",
+    "reject": "POST /api/photos/[id]/reject",
+    "react": "PATCH /api/photos/[id]/reactions",
+    "download": "GET /api/photos/[id]/download",
+    "bulk_delete": "DELETE /api/events/[eventId]/photos/bulk-delete",
+    "export": "GET /api/events/[eventId]/photos/export"
+  },
+
+  "uiComponents": {
+    "upload": "components/upload/PhotoUpload.tsx",
+    "gallery": "components/gallery/PhotoGallery.tsx",
+    "virtual_gallery": "components/gallery/VirtualPhotoGallery.tsx"
+  },
+
+  "securityConsiderations": [
+    "Always strip EXIF data before storage",
+    "Verify EXIF was stripped after processing",
+    "Detect corrupted images before upload",
+    "Validate file type and size",
+    "Use presigned URLs for direct uploads",
+    "Implement per-event photo limits",
+    "Moderate content before public display"
+  ],
+
+  "commonTasks": [
+    "Add video upload support",
+    "Implement GIF generation from photos",
+    "Add photo filters/effects",
+    "Create photo album/collection feature",
+    "Implement face detection and grouping",
+    "Add auto-enhancement on upload",
+    "Create photo slideshow feature",
+    "Implement ZIP export (TODO)"
+  ],
+
+  "relatedAgents": [
+    "event-management-agent",
+    "multi-tenant-agent",
+    "lucky-draw-agent",
+    "photo-challenge-agent"
+  ],
+
+  "testingConsiderations": {
+    "unit_tests": [
+      "Image size generation",
+      "EXIF stripping verification",
+      "Corruption detection",
+      "Validation logic"
+    ],
+    "integration_tests": [
+      "Upload flow",
+      "Presigned URL generation",
+      "Moderation workflow"
+    ]
+  },
+
+  "todos": [
+    "Implement generateEventZip() for photo export",
+    "Complete checkNSFW() with AWS Rekognition",
+    "Implement checkSuspiciousContent() AI analysis",
+    "Add storage usage calculation"
+  ]
+}

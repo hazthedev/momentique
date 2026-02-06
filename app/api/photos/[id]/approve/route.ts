@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { requireAuthForApi, verifyPhotoModerationAccess } from '@/lib/auth';
+import { updateGuestProgress } from '@/lib/photo-challenge';
 
 const shouldLogModeration = async (db: ReturnType<typeof getTenantDb>) => {
   const result = await db.query<{ name: string | null }>(
@@ -55,6 +56,16 @@ export async function PATCH(
       { status: 'approved', approved_at: new Date() },
       { id: photoId }
     );
+
+    // Update photo challenge progress (if user_fingerprint exists)
+    if (photo.user_fingerprint && !photo.is_anonymous) {
+      try {
+        await updateGuestProgress(db, photo.event_id, photo.user_fingerprint, true);
+        console.log('[PHOTO_CHALLENGE] Progress updated on approval:', photo.user_fingerprint);
+      } catch (challengeError) {
+        console.warn('[API] Photo challenge progress update on approval skipped:', challengeError);
+      }
+    }
 
     if (await shouldLogModeration(db)) {
       await db.insert('photo_moderation_logs', {

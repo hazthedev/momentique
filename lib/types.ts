@@ -99,6 +99,8 @@ export interface ISystemSettings {
         moderation_required: boolean;
         anonymous_allowed: boolean;
         guest_download_enabled: boolean;
+        photo_challenge_enabled: boolean;
+        attendance_enabled: boolean;
       };
     };
   };
@@ -165,6 +167,8 @@ export interface IEventFeatures {
   moderation_required: boolean;
   anonymous_allowed: boolean;
   guest_download_enabled: boolean;
+  photo_challenge_enabled: boolean;
+  attendance_enabled: boolean;
 }
 
 export interface IEventLimits {
@@ -188,9 +192,11 @@ export interface IEventSettings {
 }
 
 export interface IUploadRateLimitOverrides {
-  per_ip_hourly?: number;
-  per_fingerprint_hourly?: number;
+  per_user_hourly?: number;
+  per_ip_hourly?: number; // Deprecated, use per_user_hourly
+  per_fingerprint_hourly?: number; // Deprecated, use per_user_hourly
   burst_per_ip_minute?: number;
+  burst_per_fingerprint_minute?: number;
   per_event_daily?: number;
 }
 
@@ -771,4 +777,113 @@ export interface IPhotoModerationLog {
   action: ModerationActionType;
   reason?: string;
   created_at: Date;
+}
+
+// ============================================
+// PHOTO CHALLENGE TYPES
+// ============================================
+
+export interface IPhotoChallenge {
+  id: string;
+  event_id: string;
+  goal_photos: number;
+  prize_title: string;
+  prize_description?: string | null;
+  prize_tier?: string | null;
+  enabled: boolean;
+  auto_grant: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface IPhotoChallengeCreate {
+  goal_photos: number;
+  prize_title: string;
+  prize_description?: string;
+  prize_tier?: string;
+  auto_grant?: boolean;
+}
+
+export interface IPhotoChallengeUpdate {
+  goal_photos?: number;
+  prize_title?: string;
+  prize_description?: string;
+  prize_tier?: string;
+  enabled?: boolean;
+  auto_grant?: boolean;
+}
+
+export interface IGuestPhotoProgress {
+  id: string;
+  event_id: string;
+  user_fingerprint: string;
+  photos_uploaded: number;
+  photos_approved: number;
+  goal_reached: boolean;
+  prize_claimed_at?: Date | null;
+  prize_revoked: boolean;
+  revoke_reason?: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface IPrizeClaim {
+  id: string;
+  event_id: string;
+  user_fingerprint: string;
+  challenge_id?: string | null;
+  qr_code_token: string;
+  claimed_at: Date;
+  revoked_at?: Date | null;
+  revoke_reason?: string | null;
+  verified_by?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: Date;
+}
+
+export interface IPrizeClaimRevoke {
+  user_fingerprint: string;
+  reason: string;
+}
+
+// ============================================
+// ATTENDANCE TYPES
+// ============================================
+
+export type CheckInMethod = 'guest_self' | 'guest_qr' | 'organizer_manual' | 'organizer_qr';
+
+export interface IAttendance {
+  id: string;
+  event_id: string;
+  guest_name: string;
+  guest_email?: string | null;
+  guest_phone?: string | null;
+  user_fingerprint?: string | null;
+  companions_count: number;
+  check_in_time: Date;
+  check_in_method: CheckInMethod;
+  checked_in_by?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: Date;
+}
+
+export interface IAttendanceCreate {
+  event_id: string;
+  guest_name: string;
+  guest_email?: string;
+  guest_phone?: string;
+  user_fingerprint?: string;
+  companions_count?: number;
+  check_in_method?: CheckInMethod;
+  notes?: string;
+}
+
+export interface IAttendanceStats {
+  total_check_ins: number;
+  total_guests: number; // Including companions
+  check_ins_today: number;
+  unique_guests: number;
+  average_companions: number;
+  check_in_method_breakdown: Record<CheckInMethod, number>;
 }

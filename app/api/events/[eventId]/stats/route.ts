@@ -9,9 +9,8 @@ import { getTenantDb } from '@/lib/db';
 import { verifyAccessToken } from '@/lib/auth';
 import { extractSessionId, getSession, refreshSession } from '@/lib/session';
 import { getActiveConfig } from '@/lib/lucky-draw';
-import { resolveUserTier } from '@/lib/subscription';
 import { getTierConfig } from '@/lib/tier-config';
-import type { IPhoto } from '@/lib/types';
+import type { IPhoto, SubscriptionTier } from '@/lib/types';
 
 interface EventStats {
   totalPhotos: number;
@@ -118,11 +117,13 @@ export async function GET(
     }
 
     const db = getTenantDb(tenantId);
-    const subscriptionTier = await resolveUserTier(headers, tenantId, 'free');
-    let effectiveTier = subscriptionTier;
 
-    // Check if event exists
-    const event = await db.findOne('events', { id });
+    // Check if event exists AND get tenant info in parallel
+    const [event, tenant] = await Promise.all([
+      db.findOne('events', { id }),
+      db.findOne<{ subscription_tier: SubscriptionTier }>('tenants', { id: tenantId })
+    ]);
+
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
@@ -141,90 +142,127 @@ export async function GET(
       );
     }
 
-    // Prefer tenant tier for overview (organizer owns tenant limits)
-    const tenant = await db.findOne<{ subscription_tier: EventStats['tierDisplayName'] }>(
-      'tenants',
-      { id: event.tenant_id }
-    );
-    if (tenant?.subscription_tier) {
-      effectiveTier = tenant.subscription_tier as typeof subscriptionTier;
-    }
+    // Use tenant's subscription tier
+    const effectiveTier = (tenant?.subscription_tier as SubscriptionTier) || 'free';
     const tierConfig = getTierConfig(effectiveTier);
 
-    // Get all photos for this event
-    const photos = await db.findMany<IPhoto>('photos', { event_id: id });
+    // Use SQL aggregations instead of fetching all photos - much faster!
+    // Run multiple queries in parallel where possible
 
-    // Calculate stats
-    const totalPhotos = photos.length;
+    const [
+      totalPhotosResult,
+      uniqueParticipantsResult,
+      photosTodayResult,
+      contributorStatsResult,
+      timelineResult,
+      reactionsResult,
+      topLikedResult,
+      pendingModerationResult
+    ] = await Promise.all([
+      // Total photos
+      db.query<{ count: bigint }>(
+        'SELECT COUNT(*) as count FROM photos WHERE event_id = $1',
+        [id]
+      ),
+      // Unique participants
+      db.query<{ count: bigint }>(
+        'SELECT COUNT(DISTINCT user_fingerprint) as count FROM photos WHERE event_id = $1',
+        [id]
+      ),
+      // Photos today
+      db.query<{ count: bigint }>(
+        'SELECT COUNT(*) as count FROM photos WHERE event_id = $1 AND created_at >= $2',
+        [id, new Date(new Date().setHours(0, 0, 0, 0))]
+      ),
+      // Top contributors (SQL aggregation)
+      db.query<{ contributor_name: string; is_anonymous: boolean; count: bigint }>(
+        `SELECT
+          COALESCE(contributor_name, 'Guest') as contributor_name,
+          is_anonymous,
+          COUNT(*) as count
+        FROM photos
+        WHERE event_id = $1
+        GROUP BY contributor_name, is_anonymous
+        ORDER BY count DESC
+        LIMIT 3`,
+        [id]
+      ),
+      // Upload timeline (last 7 days)
+      db.query<{ date: string; count: bigint }>(
+        `SELECT
+          DATE(created_at) as date,
+          COUNT(*) as count
+        FROM photos
+        WHERE event_id = $1
+          AND created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY DATE(created_at)
+        ORDER BY date`,
+        [id]
+      ),
+      // Total reactions (SQL aggregation)
+      db.query<{ total_reactions: bigint }>(
+        `SELECT
+          SUM(
+            (COALESCE((reactions->>'heart')::int, 0)) +
+            (COALESCE((reactions->>'clap')::int, 0)) +
+            (COALESCE((reactions->>'laugh')::int, 0)) +
+            (COALESCE((reactions->>'wow')::int, 0))
+          ) as total_reactions
+        FROM photos
+        WHERE event_id = $1`,
+        [id]
+      ),
+      // Top liked photos
+      db.query<{ id: string; images: IPhoto['images']; reactions: IPhoto['reactions']; contributor_name: string | null; is_anonymous: boolean }>(
+        `SELECT id, images, reactions, contributor_name, is_anonymous
+        FROM photos
+        WHERE event_id = $1
+        ORDER BY (reactions->>'heart')::int DESC NULLS LAST
+        LIMIT 3`,
+        [id]
+      ),
+      // Pending moderation
+      db.query<{ count: bigint }>(
+        'SELECT COUNT(*) as count FROM photos WHERE event_id = $1 AND status = $2',
+        [id, 'pending']
+      )
+    ]);
 
-    // Count unique participants (by user_fingerprint)
-    const uniqueFingerprints = new Set(photos.map(p => p.user_fingerprint));
-    const totalParticipants = uniqueFingerprints.size;
-
-    // Count photos today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const photosToday = photos.filter(p => {
-      const photoDate = new Date(p.created_at);
-      return photoDate >= today;
-    }).length;
-
-    // Calculate average photos per user
+    // Calculate stats from query results
+    const totalPhotos = Number(totalPhotosResult.rows[0]?.count || 0);
+    const totalParticipants = Number(uniqueParticipantsResult.rows[0]?.count || 0);
+    const photosToday = Number(photosTodayResult.rows[0]?.count || 0);
     const avgPhotosPerUser = totalParticipants > 0
       ? Math.round((totalPhotos / totalParticipants) * 10) / 10
       : 0;
 
-    // Get top contributors
-    const contributorMap = new Map<string, number>();
-    for (const photo of photos) {
-      const name = photo.is_anonymous ? 'Anonymous' : (photo.contributor_name || 'Guest');
-      contributorMap.set(name, (contributorMap.get(name) || 0) + 1);
-    }
+    const topContributors = contributorStatsResult.rows.map(row => ({
+      name: row.is_anonymous ? 'Anonymous' : (row.contributor_name || 'Guest'),
+      count: Number(row.count)
+    }));
 
-    const topContributors = Array.from(contributorMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
-
-    // Calculate upload timeline (last 7 days)
+    // Build timeline map and fill in missing days
+    const timelineMap = new Map(timelineResult.rows.map(r => [r.date, Number(r.count)]));
     const uploadTimeline: { date: string; count: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
       const dateStr = date.toISOString().split('T')[0];
-
-      const count = photos.filter(p => {
-        const photoDate = new Date(p.created_at);
-        const photoDateStr = photoDate.toISOString().split('T')[0];
-        return photoDateStr === dateStr;
-      }).length;
-
-      uploadTimeline.push({ date: dateStr, count });
+      uploadTimeline.push({ date: dateStr, count: timelineMap.get(dateStr) || 0 });
     }
 
-    // Calculate total reactions
-    let totalReactions = 0;
-    for (const photo of photos) {
-      totalReactions += photo.reactions.heart || 0;
-      totalReactions += photo.reactions.clap || 0;
-      totalReactions += photo.reactions.laugh || 0;
-      totalReactions += photo.reactions.wow || 0;
-    }
+    const totalReactions = Number(reactionsResult.rows[0]?.total_reactions || 0);
 
-    const topLikedPhotos = photos
-      .map((photo) => ({
-        id: photo.id,
-        imageUrl: photo.images?.medium_url || photo.images?.full_url || photo.images?.original_url || photo.images?.thumbnail_url || '',
-        heartCount: photo.reactions?.heart || 0,
-        contributorName: photo.is_anonymous ? 'Anonymous' : (photo.contributor_name || 'Guest'),
-        isAnonymous: photo.is_anonymous,
-      }))
-      .sort((a, b) => b.heartCount - a.heartCount)
-      .slice(0, 3);
+    const topLikedPhotos = topLikedResult.rows.map((photo) => ({
+      id: photo.id,
+      imageUrl: photo.images?.medium_url || photo.images?.full_url || photo.images?.original_url || photo.images?.thumbnail_url || '',
+      heartCount: photo.reactions?.heart || 0,
+      contributorName: photo.is_anonymous ? 'Anonymous' : (photo.contributor_name || 'Guest'),
+      isAnonymous: photo.is_anonymous,
+    }));
 
-    // Count pending moderation
-    const pendingModeration = photos.filter(p => p.status === 'pending').length;
+    const pendingModeration = Number(pendingModerationResult.rows[0]?.count || 0);
 
     const stats: EventStats = {
       totalPhotos,
