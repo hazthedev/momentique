@@ -22,7 +22,8 @@ Get up and running in 3 commands:
 # 1. Install dependencies
 npm install
 
-# 2. Start PostgreSQL and Redis (Docker)
+# 2. Ensure PostgreSQL and Redis are running locally
+#    (or set DATABASE_URL/REDIS_URL to your cloud services)
 npm run db:setup
 
 # 3. Start the development server + WebSocket server
@@ -86,7 +87,7 @@ R2_PUBLIC_URL=https://pub-xxxxxxxxx.r2.dev
 ## Database Commands
 
 ```bash
-npm run db:setup        # Start Docker containers + run migrations
+npm run db:setup        # Run migrations (assumes DB is running)
 npm run db:reset        # Drop all tables + migrate + seed (dev only!)
 npm run db:migrate      # Run pending migrations
 npm run db:rollback     # Rollback migrations
@@ -98,15 +99,6 @@ npm run db:generate     # Generate new migration from schema
 npm run db:push         # Push schema changes (dev only)
 npm run db:backup       # Create timestamped backup
 npm run db:restore      # Restore from backup
-```
-
-## Docker Commands
-
-```bash
-npm run docker:up       # Start all containers
-npm run docker:down     # Stop all containers
-npm run docker:logs     # Follow container logs
-npm run docker:ps       # Show container status
 ```
 
 ## Multi-Tenancy Architecture
@@ -195,18 +187,10 @@ When modifying the database schema:
 
 **Solutions**:
 ```bash
-# Check if Docker containers are running
-npm run docker:ps
-
-# Restart Docker containers
-npm run docker:down
-npm run docker:up
-
-# Check PostgreSQL logs
-docker-compose logs postgres
-
 # Verify database is accessible
 npm run db:health
+
+# Confirm DATABASE_URL/REDIS_URL point to running services
 ```
 
 ### Migration Issues
@@ -258,15 +242,6 @@ POSTGRES_PORT=5433
 # Mac: brew services stop postgresql
 # Linux: sudo systemctl stop postgresql
 ```
-
-### Permission Issues (Windows)
-
-**Problem**: Docker volume permission errors
-
-**Solutions**:
-- Use named volumes (already configured in `docker-compose.yml`)
-- Run Docker Desktop as administrator
-- Check Docker Desktop file sharing settings
 
 ## Development Workflow
 
@@ -350,7 +325,6 @@ momentique/
 │   ├── db.ts                     # TenantDatabase class
 │   ├── tenant.ts                 # Multi-tenant resolution
 │   └── types.ts                  # TypeScript type definitions
-├── docker-compose.yml            # PostgreSQL + Redis
 └── middleware.ts                 # Next.js middleware
 ```
 

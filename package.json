@@ -17,7 +17,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "db:setup": "docker-compose up -d && sleep 5 && npm run db:migrate",
+    "db:setup": "npm run db:migrate",
     "db:reset": "npx tsx scripts/reset-database.ts",
     "db:migrate": "npx tsx scripts/migrate.ts",
     "db:rollback": "npx tsx scripts/rollback.ts",
@@ -28,11 +28,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:backup": "npx tsx scripts/backup.ts",
-    "db:restore": "npx tsx scripts/restore.ts",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f",
-    "docker:ps": "docker-compose ps"
+    "db:restore": "npx tsx scripts/restore.ts"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.980.0",

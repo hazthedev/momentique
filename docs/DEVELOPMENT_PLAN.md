@@ -4,7 +4,7 @@
 
 ### Completed Phases
 - Phase 1: Database & Infrastructure (COMPLETE)
-  - PostgreSQL 15 with Docker setup
+  - PostgreSQL 15 setup (local or managed)
   - Drizzle ORM with migrations
   - Row-Level Security (RLS) policies
   - Multi-tenant database architecture
@@ -43,7 +43,7 @@
 - Photo moderation tools (approve/reject, report, delete)
 - Lucky draw UI (animation, winner overlay, manual admin entry)
 - Lucky draw database verification (RLS policies, indexes)
-- WebSocket TODOs (stats, reactions, docker-compose)
+- WebSocket TODOs (stats, reactions, local dev setup)
 - User management and invitations
 - Email verification and password reset
 - Multi-tenant switching
@@ -187,7 +187,7 @@ Blockers: None
 
 #### 1. WebSocket Server Setup
 - [x] Create WebSocket server startup script
-- [ ] Add WebSocket server to docker-compose
+- [ ] Add WebSocket server to local dev setup docs/scripts
 - [ ] Complete all TODOs in lib/websocket/server.ts
 - [x] Implement WebSocket authentication
 - [ ] Add connection management and health checks
@@ -400,7 +400,7 @@ Blockers: Production environment
 - [ ] Add automated deployment to production (with approval)
 
 #### 4. Deployment and Infrastructure
-- [ ] Create production Docker setup
+- [ ] Create production deployment setup
 - [ ] Set up environment configuration (dev/staging/prod)
 - [ ] Add database migration automation
 - [ ] Add backup automation (daily database backups)
@@ -556,7 +556,7 @@ Dependencies:
 
 1. Finish Phase 4: signed URLs, gallery performance improvements, moderation tools
 2. Finish Phase 5: draw animation, winner overlay, manual entry form, RLS verification
-3. Finish Phase 6: docker-compose WS service, live reactions and stats, connection UX
+3. Finish Phase 6: WS service, live reactions and stats, connection UX
 
 ---
 
