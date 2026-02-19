@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Admin Login Form Component
+// Galeria - Admin Login Form Component
 // ============================================
 // Login form specifically for administrators with role validation
 
@@ -218,7 +218,7 @@ export function AdminLoginForm({ onSuccess, className }: AdminLoginFormProps) {
                     )}
                     aria-invalid={errors.email ? 'true' : 'false'}
                     aria-describedby={errors.email ? 'email-error' : undefined}
-                    placeholder="admin@gatherly.example"
+                    placeholder="admin@galeria.example"
                     disabled={isLoading}
                 />
                 {errors.email && (

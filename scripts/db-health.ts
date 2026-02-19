@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Database Health Check
+// Galeria - Database Health Check
 // ============================================
 // This script checks the health and status of the PostgreSQL database.
 //
@@ -17,7 +17,7 @@
 
 import { Pool } from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 
 interface HealthResult {
   status: 'healthy' | 'unhealthy';
@@ -206,7 +206,7 @@ async function performHealthChecks(): Promise<HealthResult> {
 
 function printHealthResults(result: HealthResult): void {
   console.log('╔════════════════════════════════════════════════════════╗');
-  console.log('║         Gatherly DATABASE HEALTH CHECK               ║');
+  console.log('║         Galeria DATABASE HEALTH CHECK               ║');
   console.log('╚════════════════════════════════════════════════════════╝');
   console.log('');
 

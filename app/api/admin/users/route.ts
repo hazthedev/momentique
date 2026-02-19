@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Supervisor Users API
+// Galeria - Supervisor Users API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

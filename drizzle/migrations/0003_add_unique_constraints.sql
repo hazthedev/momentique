@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Unique Constraints Migration
+-- Galeria - Unique Constraints Migration
 -- ============================================
 -- Migration: 0003_add_unique_constraints
 --

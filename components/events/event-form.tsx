@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Event Form Component
+// Galeria - Event Form Component
 // ============================================
 
 'use client';

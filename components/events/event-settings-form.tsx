@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Event Settings Form Component
+// GALERIA - Event Settings Form Component
 // ============================================
 // Theme customization and feature toggles for organizers
 

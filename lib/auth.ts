@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Authentication & JWT
+// GALERIA - Authentication & JWT
 // ============================================
 
 import jwt from 'jsonwebtoken';
@@ -63,8 +63,8 @@ export async function comparePassword(
 export function generateAccessToken(payload: IJWTPayload): string {
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
     expiresIn: ACCESS_TOKEN_EXPIRES,
-    issuer: 'gatherly.app',
-    audience: 'gatherly-api',
+    issuer: 'galeria.app',
+    audience: 'galeria-api',
   });
 }
 
@@ -74,8 +74,8 @@ export function generateAccessToken(payload: IJWTPayload): string {
 export function generateRefreshToken(payload: IJWTPayload): string {
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, {
     expiresIn: REFRESH_TOKEN_EXPIRES,
-    issuer: 'gatherly.app',
-    audience: 'gatherly-api',
+    issuer: 'galeria.app',
+    audience: 'galeria-api',
   });
 }
 
@@ -100,8 +100,8 @@ export function generateTokens(payload: IJWTPayload): IAuthTokens {
 export function verifyAccessToken(token: string): IJWTPayload {
   try {
     return jwt.verify(token, ACCESS_TOKEN_SECRET, {
-      issuer: 'gatherly.app',
-      audience: 'gatherly-api',
+      issuer: 'galeria.app',
+      audience: 'galeria-api',
     }) as IJWTPayload;
   } catch (_error) {
     throw new Error('Invalid or expired access token');
@@ -114,8 +114,8 @@ export function verifyAccessToken(token: string): IJWTPayload {
 export function verifyRefreshToken(token: string): IJWTPayload {
   try {
     return jwt.verify(token, REFRESH_TOKEN_SECRET, {
-      issuer: 'gatherly.app',
-      audience: 'gatherly-api',
+      issuer: 'galeria.app',
+      audience: 'galeria-api',
     }) as IJWTPayload;
   } catch (_error) {
     throw new Error('Invalid or expired refresh token');

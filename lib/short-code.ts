@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Short Code Generation
+// Galeria - Short Code Generation
 // ============================================
 // Generate memorable short codes for event sharing
 

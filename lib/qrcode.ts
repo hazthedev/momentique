@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - QR Code Generation Utilities
+// Galeria - QR Code Generation Utilities
 // ============================================
 
 /**

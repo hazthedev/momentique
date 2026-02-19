@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Lucky Draw Migration
+-- Galeria - Lucky Draw Migration
 -- ============================================
 -- Adds database tables for lucky draw functionality
 -- Supports automatic entries on photo upload, configurable prize tiers, and winner tracking

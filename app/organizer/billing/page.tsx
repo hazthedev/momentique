@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Organizer Billing & Plan Page
+// Galeria - Organizer Billing & Plan Page
 // ============================================
 
 'use client';
@@ -169,7 +169,7 @@ export default function OrganizerBillingPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500" />
-                  {config.features.white_label ? 'White label branding' : 'Powered by Gatherly branding'}
+                  {config.features.white_label ? 'White label branding' : 'Powered by Galeria branding'}
                 </div>
               </div>
 
@@ -190,7 +190,7 @@ export default function OrganizerBillingPage() {
                   </button>
                 ) : isEnterprise ? (
                   <a
-                    href="mailto:support@gatherly.com?subject=Enterprise%20Plan%20Inquiry"
+                    href="mailto:support@galeria.com?subject=Enterprise%20Plan%20Inquiry"
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
                   >
                     <ShieldCheck className="h-4 w-4" />
@@ -198,7 +198,7 @@ export default function OrganizerBillingPage() {
                   </a>
                 ) : (
                   <a
-                    href={`mailto:support@gatherly.com?subject=Upgrade%20to%20${encodeURIComponent(config.displayName)}`}
+                    href={`mailto:support@galeria.com?subject=Upgrade%20to%20${encodeURIComponent(config.displayName)}`}
                     className={clsx(
                       'inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white',
                       isTop ? 'bg-gradient-to-r from-violet-600 to-pink-600 hover:opacity-90' : 'bg-violet-600 hover:bg-violet-700'
@@ -221,7 +221,7 @@ export default function OrganizerBillingPage() {
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <a
-            href="mailto:support@gatherly.com?subject=Plan%20Recommendation"
+            href="mailto:support@galeria.com?subject=Plan%20Recommendation"
             className="rounded-lg bg-violet-600 px-4 py-2 text-white hover:bg-violet-700"
           >
             Contact support

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Attendance Check-in Page (QR Code Destination)
+// Galeria - Attendance Check-in Page (QR Code Destination)
 // ============================================
 // This page is accessed by scanning a QR code or direct link
 
@@ -246,7 +246,7 @@ export default function AttendanceCheckInPage() {
       {/* Footer */}
       <footer className="border-t border-emerald-200/50 bg-white/60 backdrop-blur-sm py-4 dark:border-emerald-800/30 dark:bg-gray-900/60">
         <div className="mx-auto max-w-7xl px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-          Powered by Gatherly
+          Powered by Galeria
         </div>
       </footer>
 

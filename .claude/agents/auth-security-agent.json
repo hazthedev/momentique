@@ -2,7 +2,7 @@
   "name": "auth-security-agent",
   "displayName": "Auth & Security Agent",
   "version": "1.0.0",
-  "description": "Handles authentication, authorization, session management, and security features across the Momentique platform",
+  "description": "Handles authentication, authorization, session management, and security features across the Galeria platform",
   "icon": "shield",
   "color": "#ef4444",
 
@@ -48,8 +48,8 @@
         "access_token_expires": "15 minutes",
         "refresh_token_expires": "7 days",
         "algorithm": "RS256",
-        "issuer": "gatherly.app",
-        "audience": "gatherly-api"
+        "issuer": "galeria.app",
+        "audience": "galeria-api"
       },
       "password": {
         "hashing": "bcrypt",

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Main Lucky Draw Component
+// Galeria - Main Lucky Draw Component
 // ============================================
 
 'use client';

@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Seed Default Tenants
+-- Galeria - Seed Default Tenants
 -- ============================================
 -- Migration: 0007_seed_default_tenants
 --
@@ -16,9 +16,9 @@ INSERT INTO tenants (
 ) VALUES (
   '00000000-0000-0000-0000-000000000000'::uuid,
   'master',
-  'Momentique System',
-  'Momentique',
-  'system@momentique.local',
+  'Galeria System',
+  'Galeria',
+  'system@galeria.local',
   'active'
 )
 ON CONFLICT (id) DO NOTHING;
@@ -35,7 +35,7 @@ INSERT INTO tenants (
   'white_label',
   'Default Tenant',
   'Default Tenant',
-  'admin@momentique.local',
+  'admin@galeria.local',
   'active'
 )
 ON CONFLICT (id) DO NOTHING;

@@ -1,6 +1,6 @@
-# 🔒 Momentique Security Guide
+# 🔒 Galeria Security Guide
 
-This document outlines the security measures, tools, and best practices for the Momentique project.
+This document outlines the security measures, tools, and best practices for the Galeria project.
 
 ## 📊 Security Status
 
@@ -310,7 +310,7 @@ jobs:
 If you discover a security vulnerability, please:
 
 1. **DO NOT** create a public issue
-2. Email security@momentique.app
+2. Email security@galeria.app
 3. Include:
    - Description of the vulnerability
    - Steps to reproduce
@@ -346,7 +346,7 @@ REDIS_PASSWORD=your-redis-password
 # Storage (R2 or S3)
 R2_ACCESS_KEY_ID=your-access-key
 R2_SECRET_ACCESS_KEY=your-secret-key
-R2_BUCKET_NAME=momentique-dev
+R2_BUCKET_NAME=galeria-dev
 ```
 
 ### Secrets Best Practices
@@ -388,4 +388,4 @@ R2_BUCKET_NAME=momentique-dev
 ---
 
 **Last Updated**: January 9, 2026
-**Security Team**: security@momentique.app
+**Security Team**: security@galeria.app

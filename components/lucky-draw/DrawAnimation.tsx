@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Lucky Draw Animation Components
+// Galeria - Lucky Draw Animation Components
 // ============================================
 
 'use client';

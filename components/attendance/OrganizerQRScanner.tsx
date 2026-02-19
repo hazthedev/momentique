@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Organizer QR Scanner Component
+// Galeria - Organizer QR Scanner Component
 // ============================================
 // Allows organizers to scan guest QR codes and check them in
 

@@ -1,7 +1,7 @@
-﻿# Install LRU Projects Core
+# Install LRU Projects Core
 
 ## Goal
-Initialize LRU project tracking with workstream categories relevant to Momentique/Gatherly development.
+Initialize LRU project tracking with workstream categories relevant to Galeria/Galeria development.
 
 ## Steps
 1. Ask Hazrin which project types should be enabled.

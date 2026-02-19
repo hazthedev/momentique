@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Lucky Draw Config & Statistics API
+// Galeria - Lucky Draw Config & Statistics API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Image Processor Tests
+// Galeria - Image Processor Tests
 // ============================================
 // Run with: npx tsx lib/upload/image-processor.test.ts
 

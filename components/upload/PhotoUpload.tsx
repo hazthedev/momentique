@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Drag & Drop Photo Upload Component
+// Galeria - Drag & Drop Photo Upload Component
 // ============================================
 
 'use client';

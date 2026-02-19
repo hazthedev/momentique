@@ -1,7 +1,7 @@
 # Critical Thinking Core - Rover
 
 ## Purpose
-Capture reusable engineering reasoning patterns relevant to Momentique/Gatherly implementation work.
+Capture reusable engineering reasoning patterns relevant to Galeria/Galeria implementation work.
 
 ## Reasoning Framework
 1. Define objective and constraints.

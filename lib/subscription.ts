@@ -1,5 +1,5 @@
 // ============================================
-// MOMENTIQUE - Subscription Tier Helpers
+// GALERIA - Subscription Tier Helpers
 // ============================================
 
 import { getTenantDb } from './db';

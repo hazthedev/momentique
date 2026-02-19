@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Migration 0009: Photo Moderation Logs
+-- Galeria - Migration 0009: Photo Moderation Logs
 -- ============================================
 -- Adds moderation audit logging for photo approve/reject/delete actions
 

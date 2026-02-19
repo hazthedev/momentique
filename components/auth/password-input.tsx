@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Password Input Component
+// Galeria - Password Input Component
 // ============================================
 // Password input with visibility toggle and strength indicator
 

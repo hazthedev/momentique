@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Attendance/Check-in Migration (Corrected)
+-- Galeria - Attendance/Check-in Migration (Corrected)
 -- ============================================
 
 -- ============================================

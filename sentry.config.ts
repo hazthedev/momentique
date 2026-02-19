@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Sentry Configuration
+// Galeria - Sentry Configuration
 // ============================================
 // Error tracking, performance monitoring, and security monitoring
 
@@ -74,7 +74,7 @@ Sentry.init({
     event.contexts = {
       ...event.contexts,
       app: {
-        name: "Gatherly",
+        name: "Galeria",
         type: "multi-tenant-saas",
       },
     };
@@ -196,7 +196,7 @@ Sentry.init({
   // ============================================
   // Only send errors from specific domains (optional)
   // allowUrls: [
-  //   /momentique\.app/i,
+  //   /galeria\.app/i,
   //   /localhost/i,
   // ],
 });

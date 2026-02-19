@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - QR Code Display Component
+// Galeria - QR Code Display Component
 // ============================================
 
 'use client';

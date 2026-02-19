@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Photo Upload Presign API Route
+// Galeria - Photo Upload Presign API Route
 // ============================================
 // POST /api/events/:eventId/photos/presign
 

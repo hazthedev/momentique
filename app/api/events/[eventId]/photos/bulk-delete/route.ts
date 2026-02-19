@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Organizer Bulk Photo Delete API
+// Galeria - Organizer Bulk Photo Delete API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

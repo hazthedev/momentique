@@ -1,5 +1,5 @@
-// ============================================
-// GATHERLY - Landing Page
+﻿// ============================================
+// GALERIA - Landing Page
 // ============================================
 // Simple landing page with organizer and admin login options
 
@@ -30,10 +30,13 @@ export default function HomePage() {
         {/* Logo */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-extrabold leading-normal py-2 bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
-            Gatherly
+            Galeria
           </h1>
           <p className="mt-3 text-lg text-gray-600 dark:text-gray-400">
-            Event photo sharing made simple
+            Capture Moments, Together
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-500">
+            Rakam Momen, Bersama
           </p>
         </div>
 
@@ -54,7 +57,7 @@ export default function HomePage() {
               Create and manage your events
             </p>
             <span className="mt-4 inline-flex items-center text-sm font-medium text-violet-600 dark:text-violet-400 transition-transform group-hover:translate-x-1">
-              Login →
+              Login {'->'}
             </span>
           </Link>
 
@@ -73,14 +76,14 @@ export default function HomePage() {
               System administration
             </p>
             <span className="mt-4 inline-flex items-center text-sm font-medium text-violet-600 dark:text-violet-400 transition-transform group-hover:translate-x-1">
-              Login →
+              Login {'->'}
             </span>
           </Link>
         </div>
 
         {/* Footer */}
         <p className="mt-16 text-center text-xs text-gray-500 dark:text-gray-500">
-          © 2025 Gatherly
+          (c) 2025 Galeria
         </p>
       </div>
     </div>

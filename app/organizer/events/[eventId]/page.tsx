@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Event Detail Page
+// Galeria - Event Detail Page
 // ============================================
 
 'use client';

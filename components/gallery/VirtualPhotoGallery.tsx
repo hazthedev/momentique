@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Virtualized Photo Gallery
+// Galeria - Virtualized Photo Gallery
 // ============================================
 
 'use client';

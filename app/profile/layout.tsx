@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Profile Layout
+// GALERIA - Profile Layout
 // ============================================
 
 'use client';
@@ -53,13 +53,13 @@ export default function ProfileLayout({
                         <Link href="/" className="flex items-center gap-2">
                             <Image
                                 src="/logo.png"
-                                alt="Gatherly Logo"
+                                alt="Galeria Logo"
                                 width={32}
                                 height={32}
                                 className="h-8 w-auto"
                             />
                             <span className="text-lg font-bold text-gray-900 dark:text-white">
-                                Gatherly
+                                Galeria
                             </span>
                         </Link>
                     </div>

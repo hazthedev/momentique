@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Fallback Challenge API
+// Galeria - Fallback Challenge API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

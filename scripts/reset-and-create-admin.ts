@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Quick Reset & Admin Creation
+// Galeria - Quick Reset & Admin Creation
 // ============================================
 
 import { Pool } from 'pg';
@@ -12,7 +12,7 @@ dotenv.config();
 const connectionString = process.env.DATABASE_URL!;
 
 // Admin credentials
-const ADMIN_EMAIL = 'admin@momentique.com';
+const ADMIN_EMAIL = 'admin@galeria.com';
 const ADMIN_PASSWORD = 'admin123';
 
 // Use the same tenant ID that middleware injects for local development
@@ -65,12 +65,12 @@ async function resetAndCreateAdmin() {
     `, [
       tenantId,
       'master',
-      'Gatherly',
-      'Gatherly',
+      'Galeria',
+      'Galeria',
       ADMIN_EMAIL,
-      'support@momentique.com',
+      'support@galeria.com',
       null,
-      'momentique',
+      'galeria',
       false,
       JSON.stringify({
         primary_color: '#8B5CF6',

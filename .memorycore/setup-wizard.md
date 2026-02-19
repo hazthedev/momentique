@@ -1,4 +1,4 @@
-﻿#  Setup Wizard - 2-Step Instant Save
+#  Setup Wizard - 2-Step Instant Save
 *Fast setup with permanent markdown updates*
 
 ## Step 1: Companion Identity
@@ -12,7 +12,7 @@ AI asks: "What name should I use for you?"
 - Persist to relationship/session memory files
 
 ## Optional Step 3: Project Grounding
-AI asks: "Should I lock context to Momentique/Gatherly architecture now?"
+AI asks: "Should I lock context to Galeria/Galeria architecture now?"
 - If yes, sync memory to current repo model
 
 ## Auto-Update Protocol

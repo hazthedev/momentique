@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Utility Functions
+// Galeria - Utility Functions
 // ============================================
 
 import { type ClassValue, clsx } from 'clsx';

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Admin Login Page
+// Galeria - Admin Login Page
 // ============================================
 // Dedicated login page for superadmins
 
@@ -15,7 +15,7 @@ export default function AdminLoginPage() {
                 <div className="text-center">
                     <Link href="/" className="inline-block">
                         <h1 className="text-3xl font-bold text-violet-900 dark:text-violet-400">
-                            Gatherly <span className="text-violet-500">Admin</span>
+                            Galeria <span className="text-violet-500">Admin</span>
                         </h1>
                     </Link>
                     <div className="mt-6 flex items-center justify-center space-x-2">

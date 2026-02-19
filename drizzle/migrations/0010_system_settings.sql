@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - System Settings
+-- Galeria - System Settings
 -- ============================================
 -- Migration: 0010_system_settings
 

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Register Form Component
+// Galeria - Register Form Component
 // ============================================
 // Registration form with email, password, and name validation
 

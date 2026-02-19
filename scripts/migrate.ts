@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Database Migration Runner
+// Galeria - Database Migration Runner
 // ============================================
 // This script applies pending database migrations.
 //
@@ -19,7 +19,7 @@ import { loadEnvConfig } from '@next/env';
 
 loadEnvConfig(process.cwd());
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 
 // ============================================
 // GET CURRENT MIGRATION VERSION
@@ -65,7 +65,7 @@ async function runMigrations() {
 
   try {
     console.log('========================================================');
-    console.log('         Gatherly DATABASE MIGRATIONS');
+    console.log('         Galeria DATABASE MIGRATIONS');
     console.log('========================================================');
     console.log('');
 

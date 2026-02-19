@@ -1,19 +1,19 @@
 // ============================================
-// GATHERLY - Powered By Branding Component
+// GALERIA - Powered By Branding Component
 // ============================================
-// Shows "Powered by Gatherly" watermark for free tier users
+// Shows "Powered by Galeria" watermark for free tier users
 
-interface PoweredByGatherlyProps {
+interface PoweredByGaleriaProps {
     className?: string;
     variant?: 'footer' | 'corner' | 'inline';
     showUpgradeLink?: boolean;
 }
 
-export function PoweredByGatherly({
+export function PoweredByGaleria({
     className = '',
     variant = 'footer',
     showUpgradeLink = true,
-}: PoweredByGatherlyProps) {
+}: PoweredByGaleriaProps) {
     if (variant === 'corner') {
         return (
             <div className={`fixed bottom-4 right-4 z-40 ${className}`}>
@@ -21,12 +21,12 @@ export function PoweredByGatherly({
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500 dark:text-gray-400">Powered by</span>
                         <a
-                            href="https://gatherly.com"
+                            href="https://galeria.com"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="font-semibold text-sm bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
                         >
-                            Gatherly
+                            Galeria
                         </a>
                     </div>
                     {showUpgradeLink && (
@@ -47,12 +47,12 @@ export function PoweredByGatherly({
             <span className={`inline-flex items-center gap-1 ${className}`}>
                 <span className="text-xs text-gray-400">Powered by</span>
                 <a
-                    href="https://gatherly.com"
+                    href="https://galeria.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-xs bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent hover:opacity-80"
                 >
-                    Gatherly
+                    Galeria
                 </a>
             </span>
         );
@@ -64,12 +64,12 @@ export function PoweredByGatherly({
             <div className="flex items-center justify-center gap-2">
                 <span className="text-sm text-gray-500 dark:text-gray-400">Powered by</span>
                 <a
-                    href="https://gatherly.com"
+                    href="https://galeria.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-semibold text-sm bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
                 >
-                    Gatherly
+                    Galeria
                 </a>
             </div>
             {showUpgradeLink && (
@@ -85,7 +85,7 @@ export function PoweredByGatherly({
 }
 
 // Wrapper component that conditionally shows branding based on tenant features
-interface ConditionalBrandingProps extends PoweredByGatherlyProps {
+interface ConditionalBrandingProps extends PoweredByGaleriaProps {
     whiteLabel?: boolean;
 }
 
@@ -95,5 +95,5 @@ export function ConditionalBranding({ whiteLabel, ...props }: ConditionalBrandin
         return null;
     }
 
-    return <PoweredByGatherly {...props} />;
+    return <PoweredByGaleria {...props} />;
 }

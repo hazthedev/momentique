@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - reCAPTCHA Verification API
+// Galeria - reCAPTCHA Verification API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

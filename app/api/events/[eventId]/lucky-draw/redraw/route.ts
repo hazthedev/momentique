@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Lucky Draw Redraw API Route
+// GALERIA - Lucky Draw Redraw API Route
 // ============================================
 // Endpoint to redraw a single prize tier when winner is unavailable
 

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Cache Strategy Helpers
+// Galeria - Cache Strategy Helpers
 // ============================================
 
 export type CacheProfile = {

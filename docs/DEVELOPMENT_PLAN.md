@@ -1,4 +1,4 @@
-﻿# Momentique Development Plan
+# Galeria Development Plan
 
 Source of Truth: This is the single authoritative development progress tracker for this repository.
 Last Verified: 2026-02-19

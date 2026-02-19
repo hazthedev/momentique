@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Limit Checking Utilities
+// GALERIA - Limit Checking Utilities
 // ============================================
 // Functions for checking subscription tier limits before actions.
 // Used to enforce limits on events, photos, and features.

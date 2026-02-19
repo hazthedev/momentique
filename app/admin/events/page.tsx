@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Supervisor Events Management
+// Galeria - Supervisor Events Management
 // ============================================
 
 'use client';

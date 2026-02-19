@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Login Form Component
+// Galeria - Login Form Component
 // ============================================
 // Login form with email and password validation
 

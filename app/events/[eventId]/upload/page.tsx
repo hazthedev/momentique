@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Photo Upload Page
+// Galeria - Photo Upload Page
 // ============================================
 
 'use client';

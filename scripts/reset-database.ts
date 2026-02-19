@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Database Reset (Development Only)
+// Galeria - Database Reset (Development Only)
 // ============================================
 // This script drops and recreates the database, then runs migrations and seeds.
 //
@@ -35,7 +35,7 @@ if (process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 
 // ============================================
 // DROP ALL TABLES
@@ -245,7 +245,7 @@ async function resetDatabase() {
   const startTime = Date.now();
 
   console.log('╔════════════════════════════════════════════════════════╗');
-  console.log('║     Gatherly DATABASE RESET (DEVELOPMENT ONLY)       ║');
+  console.log('║     Galeria DATABASE RESET (DEVELOPMENT ONLY)       ║');
   console.log('╚════════════════════════════════════════════════════════╝');
   console.log('');
   console.log('[RESET] ⚠️  WARNING: This will DELETE ALL DATA!');

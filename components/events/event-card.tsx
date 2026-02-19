@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Event Card Component
+// Galeria - Event Card Component
 // ============================================
 
 'use client';

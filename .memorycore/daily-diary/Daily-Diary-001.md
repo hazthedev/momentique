@@ -1,4 +1,4 @@
-﻿# Daily Diary 001 - Memory Archive
+# Daily Diary 001 - Memory Archive
 Optional conversation archive for milestone continuity.
 
 ## Archive Status
@@ -10,7 +10,7 @@ Optional conversation archive for milestone continuity.
 
 ## Entry 001 - 2026-02-14
 ### Session Summary
-- Recontextualized `.memorycore` for Momentique/Gatherly codebase reality.
+- Recontextualized `.memorycore` for Galeria/Galeria codebase reality.
 - Preserved Rover/Hazrin/friendly naming and command style.
 - Removed stale imported project context and replaced it with repository-grounded architecture notes.
 

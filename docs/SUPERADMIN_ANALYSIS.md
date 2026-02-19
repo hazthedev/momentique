@@ -1,6 +1,6 @@
 # SuperAdmin System Analysis
 
-**Project:** Gatherly / Momentique
+**Project:** Galeria / Galeria
 **Date:** 2026-02-02
 **Version:** 1.0
 

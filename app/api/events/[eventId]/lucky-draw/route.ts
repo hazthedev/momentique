@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Lucky Draw API Routes
+// Galeria - Lucky Draw API Routes
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

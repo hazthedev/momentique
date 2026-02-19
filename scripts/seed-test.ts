@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Test Seed Data (CI/CD)
+// GALERIA - Test Seed Data (CI/CD)
 // ============================================
 // This script creates predictable data for automated testing.
 //
@@ -30,7 +30,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.exit(1);
 }
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique_test';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria_test';
 
 // ============================================
 // DETERMINISTIC UUID GENERATION
@@ -116,7 +116,7 @@ const testEvent = {
   event_date: new Date('2025-01-01T12:00:00Z'),
   timezone: 'UTC',
   status: 'active',
-  qr_code_url: 'https://test.gatherly.com/test-event/qr',
+  qr_code_url: 'https://test.galeria.com/test-event/qr',
 };
 
 const testPhotos = Array.from({ length: 5 }, (_, i) => ({

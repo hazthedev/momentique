@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Photo Rejection API Route
+// Galeria - Photo Rejection API Route
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -2,7 +2,7 @@
   "name": "ui-ux-agent",
   "displayName": "UI/UX Component Agent",
   "version": "1.0.0",
-  "description": "Creates and maintains UI components, layouts, animations, and design system for the Momentique platform",
+  "description": "Creates and maintains UI components, layouts, animations, and design system for the Galeria platform",
   "icon": "palette",
   "color": "#a855f7",
 

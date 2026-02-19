@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Drizzle Schema Definitions
+// Galeria - Drizzle Schema Definitions
 // ============================================
 // This file defines the PostgreSQL database schema using Drizzle ORM.
 // It matches the TypeScript interfaces in lib/types.ts.
@@ -64,7 +64,7 @@ export const tenants = pgTable('tenants', {
   supportEmail: text('support_email'),
   phone: text('phone'),
   domain: text('domain'), // Custom domain (e.g., events.acme.com)
-  subdomain: text('subdomain'), // Subdomain (e.g., acme.momentique.com)
+  subdomain: text('subdomain'), // Subdomain (e.g., acme.galeria.com)
   isCustomDomain: boolean('is_custom_domain').notNull().default(false),
   // JSONB fields for flexible configuration
   branding: jsonb('branding').$type<{

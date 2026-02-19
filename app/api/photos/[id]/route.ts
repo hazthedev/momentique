@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Photo Delete API Route
+// Galeria - Photo Delete API Route
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

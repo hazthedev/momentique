@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Lucky Draw Participants API
+// Galeria - Lucky Draw Participants API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

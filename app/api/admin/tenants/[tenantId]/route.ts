@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Admin Tenant Detail API (disabled)
+// Galeria - Admin Tenant Detail API (disabled)
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

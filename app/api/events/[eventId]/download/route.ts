@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Guest Event Download API
+// Galeria - Guest Event Download API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Admin System Settings API
+// Galeria - Admin System Settings API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Lucky Draw Admin Tab
+// Galeria - Lucky Draw Admin Tab
 // ============================================
 // Main admin panel for lucky draw configuration and management
 

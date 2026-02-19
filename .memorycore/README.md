@@ -1,9 +1,9 @@
-﻿#  AI MemoryCore - Momentique/Gatherly Context
+#  AI MemoryCore - Galeria/Galeria Context
 *A persistent memory architecture tuned for this codebase*
 
 ##  What This Does
 
-This MemoryCore keeps Rover consistent across sessions while grounding memory in the real architecture and priorities of the Momentique/Gatherly repository.
+This MemoryCore keeps Rover consistent across sessions while grounding memory in the real architecture and priorities of the Galeria/Galeria repository.
 
 ##  Key Features
 
@@ -16,8 +16,8 @@ This MemoryCore keeps Rover consistent across sessions while grounding memory in
 ##  Codebase Context Snapshot
 
 ### Product Identity
-- **Platform**: Momentique
-- **App-facing brand in UI/code comments**: Gatherly
+- **Platform**: Galeria
+- **App-facing brand in UI/code comments**: Galeria
 - **Domain**: Multi-tenant event photo platform
 
 ### Architecture

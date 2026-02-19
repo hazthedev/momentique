@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Supabase Realtime Server Publisher
+// GALERIA - Supabase Realtime Server Publisher
 // ============================================
 // Server-side realtime broadcast utilities.
 

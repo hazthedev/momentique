@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Organizer Profile API
+// GALERIA - Organizer Profile API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

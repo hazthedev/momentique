@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Event Photo Service
+// Galeria - Event Photo Service
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

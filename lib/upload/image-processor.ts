@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Secure Image Processor
+// Galeria - Secure Image Processor
 // ============================================
 // Security-focused image processing with:
 // - Complete EXIF/metadata stripping

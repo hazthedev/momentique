@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Authentication Context
+// Galeria - Authentication Context
 // ============================================
 // Client-side authentication state management
 

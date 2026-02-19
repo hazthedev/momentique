@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Attendance Admin Tab Component
+// Galeria - Attendance Admin Tab Component
 // ============================================
 
 'use client';

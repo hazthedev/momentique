@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Database Migration Rollback
+// GALERIA - Database Migration Rollback
 // ============================================
 // This script rolls back database migrations to a specific version.
 //
@@ -16,7 +16,7 @@ import { Pool, PoolClient } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 
 // ============================================
 // GET CURRENT MIGRATION VERSION
@@ -59,7 +59,7 @@ async function rollback() {
 
   try {
     console.log('========================================================');
-    console.log('       Gatherly DATABASE MIGRATION ROLLBACK');
+    console.log('       Galeria DATABASE MIGRATION ROLLBACK');
     console.log('========================================================');
     console.log('');
 

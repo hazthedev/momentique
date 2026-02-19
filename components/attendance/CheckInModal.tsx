@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Check-in Modal Component
+// Galeria - Check-in Modal Component
 // ============================================
 
 'use client';

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Register API Endpoint
+// Galeria - Register API Endpoint
 // ============================================
 // POST /api/auth/register
 // Registers a new user, creates their tenant, and creates session

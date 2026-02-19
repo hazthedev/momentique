@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Organizer Profile Page
+// GALERIA - Organizer Profile Page
 // ============================================
 
 'use client';

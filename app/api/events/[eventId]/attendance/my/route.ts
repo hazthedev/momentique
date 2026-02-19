@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - My Attendance API Route
+// Galeria - My Attendance API Route
 // ============================================
 // Get current user's attendance status for an event
 

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Super Admin Profile API
+// Galeria - Super Admin Profile API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

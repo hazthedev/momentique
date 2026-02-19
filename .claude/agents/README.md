@@ -1,10 +1,10 @@
-# Momentique Agent System
+# Galeria Agent System
 
-Specialized agents for managing different modules of the Momentique photo event platform.
+Specialized agents for managing different modules of the Galeria photo event platform.
 
 ## Overview
 
-This directory contains 10 specialized agents, each responsible for a specific domain of the Momentique application. Each agent has deep knowledge of its module's code patterns, business logic, security considerations, and integration points.
+This directory contains 10 specialized agents, each responsible for a specific domain of the Galeria application. Each agent has deep knowledge of its module's code patterns, business logic, security considerations, and integration points.
 
 ## Available Agents
 
@@ -62,7 +62,7 @@ Each agent config includes:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Momentique Platform                     │
+│                     Galeria Platform                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌──────────────┐         ┌──────────────────────┐          │
@@ -198,4 +198,4 @@ When modifying the agent system:
 
 ## License
 
-Part of the Momentique project.
+Part of the Galeria project.

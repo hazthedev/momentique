@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Real-Time Photo Gallery Component
+// Galeria - Real-Time Photo Gallery Component
 // ============================================
 // Displays photos with live updates via WebSocket
 

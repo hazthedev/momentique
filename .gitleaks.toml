@@ -1,47 +1,47 @@
 # ============================================
-# Gatherly - Gitleaks Configuration
+# Galeria - Gitleaks Configuration
 # ============================================
 # Secret scanning for preventing credential leaks
 
-title = "Momentique Secret Scanning"
+title = "Galeria Secret Scanning"
 
 # Extend the default Gitleaks configuration
 extend = "default"
 
-# Custom rules for Momentique-specific secrets
+# Custom rules for Galeria-specific secrets
 [[rules]]
-id = "momentique-jwt-secret"
-description = "Momentique JWT secret (hardcoded)"
+id = "galeria-jwt-secret"
+description = "Galeria JWT secret (hardcoded)"
 regex = '''(?i)(jwt|access|refresh)[-_]?secret\s*=\s*['"]?[A-Za-z0-9+/=]{20,}['"]?'''
 keywords = ["jwt", "secret", "token"]
 entropy = 3.5
 
 [[rules]]
-id = "momentique-database-url"
+id = "galeria-database-url"
 description = "Database connection string"
 regex = '''(?i)database[-_]?url\s*=\s*['"]?(postgres|postgresql|mysql|mongodb)://[^\s'"]+['"]?'''
 keywords = ["database", "url", "connection", "postgres"]
 
 [[rules]]
-id = "momentique-api-key"
+id = "galeria-api-key"
 description = "Generic API key or token"
 regex = '''(?i)(api[-_]?(key|token)|secret[-_]?key|access[-_]?token)\s*[:=]\s*['"]?[A-Za-z0-9+/=]{20,}['"]?'''
 keywords = ["api", "key", "token", "secret"]
 
 [[rules]]
-id = "momentique-redis-password"
+id = "galeria-redis-password"
 description = "Redis password or connection string"
 regex = '''(?i)redis[-_]?(password|url)\s*[:=]\s*['"]?[^\s'"]{10,}['"]?'''
 keywords = ["redis", "password"]
 
 [[rules]]
-id = "momentique-aws-credentials"
+id = "galeria-aws-credentials"
 description = "AWS credentials"
 regex = '''(?i)(aws[-_])?(access[-_]?key|secret[-_]?access[-_]?key)\s*=\s*['"]?[A-Za-z0-9+/=]{20,}['"]?'''
 keywords = ["aws", "access", "key", "secret"]
 
 [[rules]]
-id = "momentique-r2-storage-key"
+id = "galeria-r2-storage-key"
 description = "Cloudflare R2/S3 storage credentials"
 regex = '''(?i)(r2[-_]?)?(account[-_]?id|access[-_]?key|secret[-_]?access[-_]?key)\s*=\s*['"]?[A-Za-z0-9+/=]{20,}['"]?'''
 keywords = ["r2", "storage", "s3", "cloudflare"]

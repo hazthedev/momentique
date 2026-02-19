@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Guest Event Page (Shareable Link)
+// Galeria - Guest Event Page (Shareable Link)
 // ============================================
 
 'use client';

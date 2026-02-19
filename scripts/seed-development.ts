@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Development Seed Data
+// GALERIA - Development Seed Data
 // ============================================
 // This script creates sample data for development and testing.
 //
@@ -30,7 +30,7 @@ if (process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 
 // ============================================
 // SEED DATA
@@ -105,7 +105,7 @@ const events = [
     expected_guests: 150,
     custom_hashtag: '#AcmeParty2025',
     status: 'active',
-    qr_code_url: `https://acme.gatherly.com/events/${event1Id}/qr`,
+    qr_code_url: `https://acme.galeria.com/events/${event1Id}/qr`,
   },
   {
     id: event2Id,
@@ -121,7 +121,7 @@ const events = [
     expected_guests: 200,
     custom_hashtag: '#AcmeLaunch',
     status: 'active',
-    qr_code_url: `https://acme.gatherly.com/events/${event2Id}/qr`,
+    qr_code_url: `https://acme.galeria.com/events/${event2Id}/qr`,
   },
   {
     id: event3Id,
@@ -137,7 +137,7 @@ const events = [
     expected_guests: 50,
     custom_hashtag: '#AcmeRetreat',
     status: 'draft',
-    qr_code_url: `https://acme.gatherly.com/events/${event3Id}/qr`,
+    qr_code_url: `https://acme.galeria.com/events/${event3Id}/qr`,
   },
 ];
 

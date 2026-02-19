@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Super Admin Profile
+// Galeria - Super Admin Profile
 // ============================================
 
 'use client';

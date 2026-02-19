@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Shared Animation Variants
+// Galeria - Shared Animation Variants
 // ============================================
 // Reusable animation variants using Motion (Framer Motion)
 

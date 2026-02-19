@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Manual Check-in API Route
+// Galeria - Manual Check-in API Route
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -4,7 +4,7 @@ import { loadEnvConfig } from '@next/env';
 
 loadEnvConfig(process.cwd());
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 
 async function fixMigrationVersion() {
     const pool = new Pool({ connectionString });

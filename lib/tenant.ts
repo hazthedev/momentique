@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Tenant Resolution Middleware
+// GALERIA - Tenant Resolution Middleware
 // ============================================
 // Handles multi-tenant routing via custom domains and subdomains
 
@@ -14,7 +14,7 @@ import { DEFAULT_TENANT_ID, SYSTEM_TENANT_ID } from './constants/tenants';
 // CONFIGURATION
 // ============================================
 
-const MASTER_DOMAIN = process.env.NEXT_PUBLIC_MASTER_DOMAIN || 'app.gatherly.com';
+const MASTER_DOMAIN = process.env.NEXT_PUBLIC_MASTER_DOMAIN || 'app.galeria.com';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 // Cache tenant lookups to reduce database queries
@@ -29,7 +29,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
  * Extract tenant identifier from hostname
  * Priority:
  * 1. Custom domain (e.g., events.luxeevents.com)
- * 2. Subdomain (e.g., luxeevents.app.gatherly.com)
+ * 2. Subdomain (e.g., luxeevents.app.galeria.com)
  * 3. Master tenant (fallback)
  */
 export function extractTenantIdentifier(hostname: string): {
@@ -48,7 +48,7 @@ export function extractTenantIdentifier(hostname: string): {
   }
 
   // Extract subdomain from hostname
-  // e.g., luxeevents.app.gatherly.com -> luxeevents
+  // e.g., luxeevents.app.galeria.com -> luxeevents
   const parts = hostname.split('.');
 
   // Handle subdomain.app.masterdomain.com format
@@ -528,8 +528,8 @@ async function seedMasterTenant(): Promise<ITenant | null> {
   try {
     const db = getTenantDb(SYSTEM_TENANT_ID);
     const masterId = DEFAULT_TENANT_ID;
-    const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Momentique';
-    const masterDomain = process.env.NEXT_PUBLIC_MASTER_DOMAIN || 'app.momentique.com';
+    const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Galeria';
+    const masterDomain = process.env.NEXT_PUBLIC_MASTER_DOMAIN || 'app.galeria.com';
     const contactEmail = process.env.MASTER_TENANT_CONTACT_EMAIL || `admin@${masterDomain}`;
 
     const existing = await db.findOne<ITenant>('tenants', { id: masterId });
@@ -592,7 +592,7 @@ function getDefaultFeatures(tier: string) {
       custom_templates: false,
       api_access: false,
       sso: false,
-      white_label: false, // Shows "Powered by Gatherly"
+      white_label: false, // Shows "Powered by Galeria"
       advanced_analytics: false,
     },
     pro: {

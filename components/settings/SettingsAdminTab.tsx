@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Settings Admin Tab Component
+// Galeria - Settings Admin Tab Component
 // ============================================
 
 'use client';

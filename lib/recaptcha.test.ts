@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - reCAPTCHA Tests
+// Galeria - reCAPTCHA Tests
 // ============================================
 // Run with: npx tsx lib/recaptcha.test.ts
 

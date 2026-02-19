@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - File Upload Validator
+// Galeria - File Upload Validator
 // ============================================
 // Security-focused file validation with:
 // - Magic byte verification (not just extension)

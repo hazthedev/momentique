@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Row-Level Security (RLS) Policies
+-- Galeria - Row-Level Security (RLS) Policies
 -- ============================================
 -- Migration: 0002_rls_policies
 --

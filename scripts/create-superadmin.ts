@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Create Superadmin User
+// Galeria - Create Superadmin User
 // ============================================
 
 import { Pool } from 'pg';
@@ -12,8 +12,8 @@ dotenv.config();
 const connectionString = process.env.DATABASE_URL!;
 
 // Superadmin credentials from request
-const EMAIL = 'gatherly@admin.com';
-const PASSWORD = 'gatherly123@';
+const EMAIL = 'galeria@admin.com';
+const PASSWORD = 'galeria123@';
 
 async function createSuperadmin() {
     const pool = new Pool({ connectionString });
@@ -51,12 +51,12 @@ async function createSuperadmin() {
       `, [
                 tenantId,
                 'master',
-                'Gatherly',
-                'Gatherly',
+                'Galeria',
+                'Galeria',
                 EMAIL,
-                'support@momentique.com',
+                'support@galeria.com',
                 null,
-                'momentique-admin',
+                'galeria-admin',
                 false,
                 JSON.stringify({ primary_color: '#8B5CF6' }),
                 'enterprise',

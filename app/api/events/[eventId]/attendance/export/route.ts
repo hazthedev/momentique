@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Attendance CSV Export API Route
+// Galeria - Attendance CSV Export API Route
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,4 +1,4 @@
-﻿#  Setup Guide - Momentique/Gatherly MemoryCore
+#  Setup Guide - Galeria/Galeria MemoryCore
 *Manual setup instructions (advanced use)*
 
 ## Quick Start
@@ -40,4 +40,4 @@ Keep the existing `.memorycore` folder structure unchanged; update content only.
 
 ---
 
-This setup keeps Rover personalized while fully aligned with Momentique/Gatherly implementation reality.
+This setup keeps Rover personalized while fully aligned with Galeria/Galeria implementation reality.

@@ -1,8 +1,8 @@
 // ============================================
-// GATHERLY - Client Fingerprint Helper
+// GALERIA - Client Fingerprint Helper
 // ============================================
 
-const STORAGE_KEY = 'gatherly_fingerprint';
+const STORAGE_KEY = 'galeria_fingerprint';
 
 export function getClientFingerprint(): string | null {
   if (typeof window === 'undefined') {

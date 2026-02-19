@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - reCAPTCHA v3 Component
+// Galeria - reCAPTCHA v3 Component
 // ============================================
 // Client-side reCAPTCHA v3 component with fallback challenge
 

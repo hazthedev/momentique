@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Fix Lucky Draw RLS Policies
+-- Galeria - Fix Lucky Draw RLS Policies
 -- ============================================
 -- Fixes incorrect function references in lucky draw RLS policies
 -- Migration: 0005_fix_lucky_draw_rls

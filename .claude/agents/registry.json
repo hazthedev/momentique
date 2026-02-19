@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Momentique Agent Registry - Central configuration for all specialized agents",
+  "description": "Galeria Agent Registry - Central configuration for all specialized agents",
   "lastUpdated": "2025-02-02",
 
   "agents": [

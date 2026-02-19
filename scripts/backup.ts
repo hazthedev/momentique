@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Database Backup
+// Galeria - Database Backup
 // ============================================
 // This script creates a timestamped backup of the database.
 //
@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 const backupsDir = path.join(process.cwd(), 'backups');
 
 // ============================================
@@ -45,7 +45,7 @@ function parseConnectionString(connStr: string) {
 async function createBackup() {
   try {
     console.log('╔════════════════════════════════════════════════════════╗');
-    console.log('║         Gatherly DATABASE BACKUP                    ║');
+    console.log('║         Galeria DATABASE BACKUP                    ║');
     console.log('╚════════════════════════════════════════════════════════╝');
     console.log('');
 
@@ -58,7 +58,7 @@ async function createBackup() {
     // Get current timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
     const time = new Date().toISOString().split('T')[1].split('.')[0].replace(/:/g, '-');
-    const filename = `momentique-backup-${timestamp}_${time}.sql.gz`;
+    const filename = `galeria-backup-${timestamp}_${time}.sql.gz`;
     const filepath = path.join(backupsDir, filename);
 
     // Get connection details

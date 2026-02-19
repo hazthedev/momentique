@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Header Component
+// GALERIA - Header Component
 // ============================================
 // Main navigation header with auth-aware menu
 
@@ -41,13 +41,13 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/logo.png"
-              alt="Gatherly Logo"
+              alt="Galeria Logo"
               width={32}
               height={32}
               className="h-8 w-auto"
               priority
             />
-            <span className="text-xl font-bold tracking-tight text-gray-900">Gatherly</span>
+            <span className="text-xl font-bold tracking-tight text-gray-900">Galeria</span>
           </Link>
 
           {/* Navigation */}

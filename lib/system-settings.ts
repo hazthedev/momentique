@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - System Settings
+// Galeria - System Settings
 // ============================================
 
 import { getTenantDb } from './db';

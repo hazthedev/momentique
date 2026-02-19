@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Slot Machine Draw Animation
+// Galeria - Slot Machine Draw Animation
 // ============================================
 
 'use client';

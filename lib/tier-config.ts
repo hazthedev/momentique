@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Subscription Tier Configuration
+// GALERIA - Subscription Tier Configuration
 // ============================================
 // Defines features and limits for each subscription tier.
 // Used for limit enforcement and feature gating throughout the app.
@@ -17,7 +17,7 @@ export const FREE_TIER_FEATURES: ITenantFeatures = {
   custom_templates: false,
   api_access: false,
   sso: false,
-  white_label: false, // Shows "Powered by Gatherly"
+  white_label: false, // Shows "Powered by Galeria"
   advanced_analytics: false,
 };
 
@@ -133,7 +133,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, ITierConfig> = {
     features: FREE_TIER_FEATURES,
     limits: FREE_TIER_LIMITS,
     displayName: 'Free',
-    description: 'Perfect for trying out Gatherly',
+    description: 'Perfect for trying out Galeria',
     priceMonthly: 0,
   },
   pro: {

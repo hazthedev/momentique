@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Redis Client Singleton
+// Galeria - Redis Client Singleton
 // ============================================
 // Multi-tenant Redis with automatic reconnection, connection pooling
 // Used for: Session storage, rate limiting, WebSocket pub/sub

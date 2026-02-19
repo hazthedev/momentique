@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Admin Moderation Settings API
+// Galeria - Admin Moderation Settings API
 // ============================================
 // Super-admin only endpoints for managing AI content moderation
 

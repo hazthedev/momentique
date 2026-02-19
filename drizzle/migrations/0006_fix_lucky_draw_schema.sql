@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Lucky Draw Schema Fixes
+-- Galeria - Lucky Draw Schema Fixes
 -- ============================================
 -- Align column names and constraints with application logic.
 

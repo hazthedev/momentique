@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Moderation Logs API Route
+// Galeria - Moderation Logs API Route
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

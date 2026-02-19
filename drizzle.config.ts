@@ -5,7 +5,7 @@ export default {
   out: './drizzle/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique',
+    url: process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria',
   },
   verbose: true,
   strict: true,

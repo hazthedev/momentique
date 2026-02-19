@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Guest Event Page Controller Hook
+// Galeria - Guest Event Page Controller Hook
 // ============================================
 
 'use client';
@@ -876,7 +876,7 @@ export function useGuestEventPageController(eventId: string) {
       try {
         await navigator.share({
           title: event?.name || 'Event',
-          text: event?.description || `Join ${event?.name} on Gatherly!`,
+          text: event?.description || `Join ${event?.name} on Galeria!`,
           url: shareUrl,
         });
       } catch (err) {

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Organizer Usage API
+// Galeria - Organizer Usage API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

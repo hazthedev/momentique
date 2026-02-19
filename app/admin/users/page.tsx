@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Supervisor Users Management
+// Galeria - Supervisor Users Management
 // ============================================
 
 'use client';

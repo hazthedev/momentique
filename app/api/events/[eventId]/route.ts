@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Single Event API Routes
+// Galeria - Single Event API Routes
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

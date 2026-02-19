@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Rate Limiter Tests
+// Galeria - Rate Limiter Tests
 // ============================================
 // Run with: npx tsx lib/rate-limit.test.ts
 

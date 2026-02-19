@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Authentication Middleware
+// Galeria - Authentication Middleware
 // ============================================
 // Protected route middleware for Next.js API routes
 // Validates sessions and attaches user context to requests

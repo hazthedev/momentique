@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Attendance Management Page
+// Galeria - Attendance Management Page
 // ============================================
 
 'use client';

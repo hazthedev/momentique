@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Supabase Client
+// GALERIA - Supabase Client
 // ============================================
 // Client initialization for Supabase services
 

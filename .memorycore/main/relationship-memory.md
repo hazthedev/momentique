@@ -15,7 +15,7 @@ Working profile for communication and implementation quality.
 - Hazrin prefers practical summaries tied to changed files and build/runtime status.
 
 ## Repository Collaboration Context
-- Product context: Momentique platform with Gatherly branding in app surfaces.
+- Product context: Galeria platform with Galeria branding in app surfaces.
 - Work style: architecture-aware implementation in Next.js/TypeScript.
 - Priority areas currently emphasized:
   1. API reliability and tenant-context correctness in organizer/admin flows

@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Supabase Realtime Client Library
+// GALERIA - Supabase Realtime Client Library
 // ============================================
 // Client-side realtime connection management using Supabase
 

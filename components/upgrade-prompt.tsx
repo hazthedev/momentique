@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================
-// GATHERLY - Upgrade Prompt Component
+// GALERIA - Upgrade Prompt Component
 // ============================================
 // Shows upgrade prompts when users hit tier limits
 
@@ -22,7 +22,7 @@ const TIER_BENEFITS = {
         'Up to 10 events per month',
         '500 photos per event',
         'Lucky draw feature',
-        'Remove "Powered by Gatherly" branding',
+        'Remove "Powered by Galeria" branding',
         'Advanced analytics',
     ],
     premium: [

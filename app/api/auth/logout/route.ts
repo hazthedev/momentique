@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Logout API Endpoint
+// Galeria - Logout API Endpoint
 // ============================================
 // POST /api/auth/logout
 // Invalidates user session and clears cookie

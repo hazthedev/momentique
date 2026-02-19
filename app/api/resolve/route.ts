@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Short Code Resolution API
+// Galeria - Short Code Resolution API
 // ============================================
 // Resolve short codes to event IDs
 

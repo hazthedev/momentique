@@ -1,5 +1,5 @@
 # ============================================
-# Gatherly - Semgrep Security Configuration
+# Galeria - Semgrep Security Configuration
 # ============================================
 # Static application security testing (SAST) rules
 
@@ -7,7 +7,7 @@ rules:
   # ============================================
   # SQL INJECTION PREVENTION
   # ============================================
-  - id: momentique-no-raw-sql
+  - id: galeria-no-raw-sql
     patterns:
       - pattern: db.query($QUERY, ...)
       - metavariable-regex:
@@ -33,7 +33,7 @@ rules:
   # ============================================
   # HARDCODED SECRETS DETECTION
   # ============================================
-  - id: momentique-hardcoded-jwt-secret
+  - id: galeria-hardcoded-jwt-secret
     patterns:
       - pattern-either:
           - pattern: JWT_ACCESS_SECRET = "..."
@@ -54,7 +54,7 @@ rules:
       cwe: "CWE-798: Use of Hard-coded Credentials"
       owasp: "A07: Identification and Authentication Failures"
 
-  - id: momentique-hardcoded-api-key
+  - id: galeria-hardcoded-api-key
     patterns:
       - pattern-regex: "(api_key|apikey|API_KEY|APIKEY)\\s*=\\s*['\"][^'\"]{10,}['\"]"
     message: Hardcoded API key detected - use environment variables
@@ -69,7 +69,7 @@ rules:
       cwe: "CWE-798: Use of Hard-coded Credentials"
       owasp: "A07: Identification and Authentication Failures"
 
-  - id: momentique-hardcoded-database-url
+  - id: galeria-hardcoded-database-url
     patterns:
       - pattern-regex: "(database_url|DATABASE_URL)\\s*=\\s*['\"]postgresql://"
     message: Hardcoded database URL detected - use environment variables
@@ -87,7 +87,7 @@ rules:
   # ============================================
   # INSECURE RANDOM NUMBER GENERATION
   # ============================================
-  - id: momentique-insecure-random
+  - id: galeria-insecure-random
     patterns:
       - pattern: Math.random()
     message: Math.random() is not cryptographically secure - use crypto.randomBytes()
@@ -107,7 +107,7 @@ rules:
   # ============================================
   # XSS PREVENTION
   # ============================================
-  - id: momentique-dangerously-set-inner-html
+  - id: galeria-dangerously-set-inner-html
     patterns:
       - pattern: dangerouslySetInnerHTML
     message: Avoid dangerouslySetInnerHTML - use safe HTML sanitization
@@ -127,7 +127,7 @@ rules:
   # ============================================
   # AUTHENTICATION SECURITY
   # ============================================
-  - id: momentique-missing-token-verification
+  - id: galeria-missing-token-verification
     patterns:
       - pattern: $REQ.headers.get("authorization")
       - metavariable-pattern:
@@ -149,7 +149,7 @@ rules:
   # ============================================
   # RATE LIMITING
   # ============================================
-  - id: momentique-api-route-no-rate-limit
+  - id: galeria-api-route-no-rate-limit
     patterns:
       - pattern: async function $FUNC($REQ, $RES) {...}
       - pattern: verifyAccessToken($TOKEN)
@@ -175,7 +175,7 @@ rules:
   # ============================================
   # DATA EXPOSURE
   # ============================================
-  - id: momentique-expose-stack-trace
+  - id: galeria-expose-stack-trace
     patterns:
       - pattern: console.error($ERR)
       - metavariable-pattern:
@@ -192,7 +192,7 @@ rules:
       category: security
       owasp: "A05: Security Misconfiguration"
 
-  - id: momentique-expose-error-details
+  - id: galeria-expose-error-details
     patterns:
       - pattern: "res.json({ error: err.message })"
     message: Exposing detailed error messages to client - sanitize error responses
@@ -209,7 +209,7 @@ rules:
   # ============================================
   # MULTI-TENANT SECURITY
   # ============================================
-  - id: momentique-missing-tenant-check
+  - id: galeria-missing-tenant-check
     patterns:
       - pattern: async function $FUNC($REQ, $RES) {...}
       - pattern: $DB.findOne(...)
@@ -232,7 +232,7 @@ rules:
   # ============================================
   # FILE UPLOAD SECURITY
   # ============================================
-  - id: momentique-unsafe-file-upload
+  - id: galeria-unsafe-file-upload
     patterns:
       - pattern: fs.writeFile($PATH, $DATA)
       - metavariable-regex:
@@ -253,7 +253,7 @@ rules:
   # ============================================
   # REDIRECT SECURITY
   # ============================================
-  - id: momentique-open-redirect
+  - id: galeria-open-redirect
     patterns:
       - pattern: redirect($URL)
       - metavariable-pattern:
@@ -274,7 +274,7 @@ rules:
 # TEST CONFIGURATION
 # ============================================
 tests:
-  - id: momentique-test-security-headers
+  - id: galeria-test-security-headers
     patterns:
       - pattern: response.headers.set("x-tenant-id", ...)
     message: "Good: Tenant ID is being set for multi-tenant isolation"

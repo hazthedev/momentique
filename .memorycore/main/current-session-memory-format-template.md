@@ -1,4 +1,4 @@
-﻿# Current Session Memory Format Template
+# Current Session Memory Format Template
 
 Use this template when protocols ask to refresh session memory format.
 
@@ -9,7 +9,7 @@ Use this template when protocols ask to refresh session memory format.
 - Context State: [Short summary]
 
 ## Active Repository Context
-- Product Identity: [Momentique/Gatherly context]
+- Product Identity: [Galeria/Galeria context]
 - Stack Snapshot: [Next.js/TypeScript/Postgres/Drizzle/etc]
 - Current Feature Domain: [photos/lucky draw/moderation/attendance/etc]
 - Immediate Goals: [what to complete now]

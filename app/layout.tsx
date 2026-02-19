@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gatherly - Event Photos & Lucky Draw Platform",
-  description: "Capture event moments in real-time. Guests upload photos instantly, engage with lucky draws, and create lasting memories.",
+  title: "Galeria",
+  description: "Capture Moments, Together",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

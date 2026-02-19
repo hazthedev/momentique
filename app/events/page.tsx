@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Events Page (Redirect)
+// Galeria - Events Page (Redirect)
 // ============================================
 // This page now redirects to the unified Dashboard
 

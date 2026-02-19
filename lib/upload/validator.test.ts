@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - File Validator Tests
+// Galeria - File Validator Tests
 // ============================================
 // Run with: npx tsx lib/upload/validator.test.ts
 

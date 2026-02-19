@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Migration 0008: Photo Reactions Table
+-- Galeria - Migration 0008: Photo Reactions Table
 -- ============================================
 -- Adds photo_reactions table to track individual user reactions
 -- Enables the max 10 reactions per user per photo feature

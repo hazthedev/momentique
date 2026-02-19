@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Admin Dashboard Component
+// Galeria - Admin Dashboard Component
 // ============================================
 // Event management, moderation, and analytics
 

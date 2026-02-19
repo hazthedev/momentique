@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Lucky Draw Core Logic
+// Galeria - Lucky Draw Core Logic
 // ============================================
 // Core lucky draw functionality including draw execution algorithm and entry management
 

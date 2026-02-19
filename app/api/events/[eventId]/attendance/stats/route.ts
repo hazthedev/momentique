@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Attendance Stats API Route
+// Galeria - Attendance Stats API Route
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';

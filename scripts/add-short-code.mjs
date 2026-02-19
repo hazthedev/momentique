@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Add short_code column to events
+// Galeria - Add short_code column to events
 // ============================================
 
 import pg from 'pg';
@@ -22,7 +22,7 @@ const match = dbUrl?.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/)
 const client = new Client({
   host: match ? match[3] : process.env.PGHOST || 'localhost',
   port: match ? parseInt(match[4]) : parseInt(process.env.PGPORT || '5432'),
-  database: match ? match[5] : process.env.PGDATABASE || 'momentique',
+  database: match ? match[5] : process.env.PGDATABASE || 'galeria',
   user: match ? match[1] : process.env.PGUSER || 'postgres',
   password: match ? match[2] : process.env.PGPASSWORD || 'postgres',
 });

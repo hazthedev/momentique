@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Event Stats Component
+// Galeria - Event Stats Component
 // ============================================
 
 'use client';

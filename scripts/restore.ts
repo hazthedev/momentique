@@ -1,5 +1,5 @@
 // ============================================
-// GATHERLY - Database Restore
+// GALERIA - Database Restore
 // ============================================
 // This script restores a database from a backup file.
 //
@@ -15,7 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://momentique:momentique_dev_password@localhost:5432/momentique';
+const connectionString = process.env.DATABASE_URL || 'postgresql://galeria:galeria_dev_password@localhost:5432/galeria';
 const backupsDir = path.join(process.cwd(), 'backups');
 
 // ============================================
@@ -63,7 +63,7 @@ async function restore() {
 
   try {
     console.log('╔════════════════════════════════════════════════════════╗');
-    console.log('║         Gatherly DATABASE RESTORE                   ║');
+    console.log('║         Galeria DATABASE RESTORE                   ║');
     console.log('╚════════════════════════════════════════════════════════╝');
     console.log('');
 

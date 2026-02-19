@@ -37,9 +37,9 @@
     "tenantTypes": ["master", "white_label", "demo"],
     "subscriptionTiers": ["free", "pro", "premium", "enterprise", "tester"],
     "routing": {
-      "subdomain_format": "{tenant}.app.momentique.com",
+      "subdomain_format": "{tenant}.app.galeria.com",
       "custom_domain": "events.{customer-domain}.com",
-      "master_domain": "app.momentique.com"
+      "master_domain": "app.galeria.com"
     },
     "cache": {
       "ttl": "5 minutes",

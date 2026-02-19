@@ -1,8 +1,8 @@
-# Momentique
+# Galeria
 
 **Multi-tenant event photo management platform with real-time features**
 
-Momentique is a white-label SaaS platform that allows event organizers to create photo galleries where guests can upload, view, and interact with photos. Features include real-time updates, lucky draws, and multi-tenant architecture with Row-Level Security.
+Galeria is a white-label SaaS platform that allows event organizers to create photo galleries where guests can upload, view, and interact with photos. Features include real-time updates, lucky draws, and multi-tenant architecture with Row-Level Security.
 
 ## Features
 
@@ -53,7 +53,7 @@ Create a `.env` file in the project root (see `.env.example` for reference):
 ### Database
 
 ```bash
-DATABASE_URL=postgresql://momentique:password@localhost:5432/momentique
+DATABASE_URL=postgresql://galeria:password@localhost:5432/galeria
 DATABASE_POOL_MIN=2
 DATABASE_POOL_MAX=20
 ```
@@ -80,7 +80,7 @@ JWT_REFRESH_EXPIRES=604800
 R2_ACCOUNT_ID=your-r2-account-id
 R2_ACCESS_KEY_ID=your-access-key-id
 R2_SECRET_ACCESS_KEY=your-secret-access-key
-R2_BUCKET_NAME=momentique-dev
+R2_BUCKET_NAME=galeria-dev
 R2_PUBLIC_URL=https://pub-xxxxxxxxx.r2.dev
 ```
 
@@ -103,7 +103,7 @@ npm run db:restore      # Restore from backup
 
 ## Multi-Tenancy Architecture
 
-Momentique uses **Row-Level Security (RLS)** for complete tenant isolation at the database level.
+Galeria uses **Row-Level Security (RLS)** for complete tenant isolation at the database level.
 
 ### How It Works
 
@@ -200,10 +200,10 @@ npm run db:health
 **Solutions**:
 ```bash
 # Check current migration version
-psql -d momentique -c "SELECT * FROM migration_version"
+psql -d galeria -c "SELECT * FROM migration_version"
 
 # Run specific migration manually
-psql -d momentique -f drizzle/migrations/0001_xxx.sql
+psql -d galeria -f drizzle/migrations/0001_xxx.sql
 
 # Reset database (dev only - deletes all data!)
 npm run db:reset
@@ -304,7 +304,7 @@ NODE_ENV=test npm run db:seed:test
 ## Project Structure
 
 ```
-momentique/
+galeria/
 ├── app/                          # Next.js App Router
 │   ├── api/                      # API routes
 │   ├── layout.tsx                # Root layout
@@ -347,5 +347,5 @@ MIT
 
 ## Support
 
-For issues and questions, please open a GitHub issue or contact the Momentique team.
+For issues and questions, please open a GitHub issue or contact the Galeria team.
 

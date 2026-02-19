@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Event Admin Dashboard Page
+// Galeria - Event Admin Dashboard Page
 // ============================================
 
 'use client';

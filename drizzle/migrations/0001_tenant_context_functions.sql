@@ -1,5 +1,5 @@
 -- ============================================
--- Gatherly - Tenant Context Functions
+-- Galeria - Tenant Context Functions
 -- ============================================
 -- Migration: 0001_tenant_context_functions
 --

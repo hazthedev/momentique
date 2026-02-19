@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Current User API Endpoint
+// Galeria - Current User API Endpoint
 // ============================================
 // GET /api/auth/me
 // Returns the current authenticated user's information

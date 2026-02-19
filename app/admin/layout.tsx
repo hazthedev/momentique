@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Supervisor Dashboard Layout
+// Galeria - Supervisor Dashboard Layout
 // ============================================
 
 'use client';

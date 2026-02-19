@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Lucky Draw Entry Form
+// Galeria - Lucky Draw Entry Form
 // ============================================
 
 'use client';

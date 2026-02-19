@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Protected Route Component
+// Galeria - Protected Route Component
 // ============================================
 // Client-side route protection wrapper
 

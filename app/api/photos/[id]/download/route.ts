@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Photo Download API
+// Galeria - Photo Download API
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -98,7 +98,7 @@ export async function GET(
     const arrayBuffer = await response.arrayBuffer();
     let buffer: Buffer = Buffer.from(arrayBuffer);
     if (!authUser && watermark) {
-      buffer = await applyWatermark(buffer, 'Gatherly');
+      buffer = await applyWatermark(buffer, 'Galeria');
     }
 
     let filename = buildPhotoFilename(photo.event_name || 'event', photo);

@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Password Validation
+// Galeria - Password Validation
 // ============================================
 // Password strength validation and security checks
 // Includes common password detection, entropy calculation, and requirements

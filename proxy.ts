@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - Next.js Middleware
+// Galeria - Next.js Middleware
 // ============================================
 // Tenant resolution and authentication
 
@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
     headers.set('x-tenant-id', '00000000-0000-0000-0000-000000000001');
     headers.set('x-tenant-type', 'master');
     headers.set('x-tenant-tier', 'enterprise');
-    headers.set('x-tenant-name', 'Gatherly Dev');
+    headers.set('x-tenant-name', 'Galeria Dev');
     headers.set('x-tenant-branding', JSON.stringify({
       primary_color: '#8B5CF6',
       secondary_color: '#EC4899',

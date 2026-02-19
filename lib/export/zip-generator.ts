@@ -1,5 +1,5 @@
 // ============================================
-// Gatherly - ZIP Export Generator
+// Galeria - ZIP Export Generator
 // ============================================
 
 import archiver from 'archiver';
@@ -69,7 +69,7 @@ export async function createPhotoExportZip({
   photos,
   watermark = false,
   includeManifest = true,
-  watermarkLabel = 'Gatherly',
+  watermarkLabel = 'Galeria',
 }: {
   event: IEvent;
   photos: IPhoto[];

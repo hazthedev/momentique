@@ -10,7 +10,7 @@ Temporary working memory for active continuity.
 - Main focus: Stabilize organizer admin fetch reliability (Overview + Lucky Draw tabs)
 
 ## Repository Context (Ground Truth)
-- Platform identity: Momentique (SaaS), Gatherly branding in app surfaces
+- Platform identity: Galeria (SaaS), Galeria branding in app surfaces
 - App stack: Next.js App Router + TypeScript
 - Data stack: PostgreSQL + Drizzle + tenant isolation model (RLS-oriented)
 - Supporting services: Redis, R2/S3 storage pipeline, Rekognition moderation, BullMQ jobs

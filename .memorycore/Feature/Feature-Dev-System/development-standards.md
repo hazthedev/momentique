@@ -1,6 +1,6 @@
-﻿# Development Standards
+# Development Standards
 
-## Repository Defaults (Momentique/Gatherly)
+## Repository Defaults (Galeria/Galeria)
 - Primary language: TypeScript
 - Framework: Next.js App Router
 - Data: Drizzle + PostgreSQL
