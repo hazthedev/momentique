@@ -30,29 +30,9 @@ function getInMemorySession(sessionId: string): ISessionData | null {
   return session;
 }
 
-// SECURITY: Fail fast if SESSION_SECRET is not set in production
-const SESSION_SECRET = process.env.SESSION_SECRET;
-const IS_PROD = process.env.NODE_ENV === 'production';
-const IS_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
-
-if (!SESSION_SECRET) {
-  // Avoid failing during Next.js build-time evaluation
-  if (IS_PROD && !IS_BUILD && typeof window === 'undefined') {
-    throw new Error('[SESSION] SESSION_SECRET environment variable must be set in production!');
-  }
-  if (!IS_PROD) {
-    console.warn('[SESSION] SESSION_SECRET not configured. Using random temporary key (sessions will be invalidated on restart). Set SESSION_SECRET environment variable!');
-  }
+if (!process.env.SESSION_SECRET) {
+  console.warn('[SESSION] SESSION_SECRET is not configured. Set it in production for stronger session hardening.');
 }
-
-// Generate a random secret for development only (DO NOT USE IN PRODUCTION)
-const getOrGenerateSecret = (): string => {
-  if (SESSION_SECRET) return SESSION_SECRET;
-  if (process.env.NODE_ENV !== 'production') {
-    return randomBytes(32).toString('hex');
-  }
-  throw new Error('[SESSION] SESSION_SECRET must be set in production!');
-};
 
 // ============================================
 // TYPES
@@ -151,6 +131,12 @@ export async function createSession(
   await setKeyWithExpiry(getSessionKey(sessionId), sessionData, ttl);
   if (USE_IN_MEMORY_SESSIONS) {
     inMemorySessions.set(sessionId, sessionData);
+  } else {
+    // In production/serverless, sessions must persist in Redis.
+    const persistedSession = await getKey<ISessionData>(getSessionKey(sessionId));
+    if (!persistedSession) {
+      throw new Error('[SESSION] Failed to persist session in Redis');
+    }
   }
 
   console.log(`[SESSION] Created session ${sessionId} for user ${user.id}`);

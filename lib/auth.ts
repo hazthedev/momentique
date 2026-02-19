@@ -18,16 +18,32 @@ const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || '';
 const ACCESS_TOKEN_EXPIRES = parseInt(process.env.JWT_ACCESS_EXPIRES || '900', 10); // 15 minutes
 const REFRESH_TOKEN_EXPIRES = parseInt(process.env.JWT_REFRESH_EXPIRES || '604800', 10); // 7 days
 
-const IS_PROD = process.env.NODE_ENV === 'production';
-const IS_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
+let warnedJwtSecrets = false;
+
+function logJwtSecretsWarning(): void {
+  if (warnedJwtSecrets) return;
+  warnedJwtSecrets = true;
+  console.warn('[Auth] JWT secrets are not fully configured. Session-based auth can work, but JWT token operations will fail until configured.');
+}
+
+function getAccessTokenSecret(): string {
+  if (!ACCESS_TOKEN_SECRET) {
+    logJwtSecretsWarning();
+    throw new Error('JWT_ACCESS_SECRET is not configured');
+  }
+  return ACCESS_TOKEN_SECRET;
+}
+
+function getRefreshTokenSecret(): string {
+  if (!REFRESH_TOKEN_SECRET) {
+    logJwtSecretsWarning();
+    throw new Error('JWT_REFRESH_SECRET is not configured');
+  }
+  return REFRESH_TOKEN_SECRET;
+}
 
 if (!ACCESS_TOKEN_SECRET || !REFRESH_TOKEN_SECRET) {
-  if (IS_PROD && !IS_BUILD && typeof window === 'undefined') {
-    throw new Error('[Auth] JWT secrets not configured');
-  }
-  if (!IS_PROD) {
-    console.warn('[Auth] JWT secrets not configured. Using temporary secrets in development only.');
-  }
+  logJwtSecretsWarning();
 }
 
 // ============================================
@@ -61,7 +77,7 @@ export async function comparePassword(
  * Generate access token
  */
 export function generateAccessToken(payload: IJWTPayload): string {
-  return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
+  return jwt.sign(payload, getAccessTokenSecret(), {
     expiresIn: ACCESS_TOKEN_EXPIRES,
     issuer: 'galeria.app',
     audience: 'galeria-api',
@@ -72,7 +88,7 @@ export function generateAccessToken(payload: IJWTPayload): string {
  * Generate refresh token
  */
 export function generateRefreshToken(payload: IJWTPayload): string {
-  return jwt.sign(payload, REFRESH_TOKEN_SECRET, {
+  return jwt.sign(payload, getRefreshTokenSecret(), {
     expiresIn: REFRESH_TOKEN_EXPIRES,
     issuer: 'galeria.app',
     audience: 'galeria-api',
@@ -99,7 +115,7 @@ export function generateTokens(payload: IJWTPayload): IAuthTokens {
  */
 export function verifyAccessToken(token: string): IJWTPayload {
   try {
-    return jwt.verify(token, ACCESS_TOKEN_SECRET, {
+    return jwt.verify(token, getAccessTokenSecret(), {
       issuer: 'galeria.app',
       audience: 'galeria-api',
     }) as IJWTPayload;
@@ -113,7 +129,7 @@ export function verifyAccessToken(token: string): IJWTPayload {
  */
 export function verifyRefreshToken(token: string): IJWTPayload {
   try {
-    return jwt.verify(token, REFRESH_TOKEN_SECRET, {
+    return jwt.verify(token, getRefreshTokenSecret(), {
       issuer: 'galeria.app',
       audience: 'galeria-api',
     }) as IJWTPayload;
@@ -406,7 +422,7 @@ export function extractTokenFromCookie(
 export function generatePasswordResetToken(userId: string): string {
   return jwt.sign(
     { sub: userId, type: 'password_reset' },
-    ACCESS_TOKEN_SECRET,
+    getAccessTokenSecret(),
     { expiresIn: '1h' }
   );
 }
@@ -416,7 +432,7 @@ export function generatePasswordResetToken(userId: string): string {
  */
 export function verifyPasswordResetToken(token: string): string {
   try {
-    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as {
+    const payload = jwt.verify(token, getAccessTokenSecret()) as {
       sub: string;
       type?: string;
     };
@@ -441,7 +457,7 @@ export function verifyPasswordResetToken(token: string): string {
 export function generateEmailVerificationToken(userId: string): string {
   return jwt.sign(
     { sub: userId, type: 'email_verification' },
-    ACCESS_TOKEN_SECRET,
+    getAccessTokenSecret(),
     { expiresIn: '7d' }
   );
 }
@@ -451,7 +467,7 @@ export function generateEmailVerificationToken(userId: string): string {
  */
 export function verifyEmailVerificationToken(token: string): string {
   try {
-    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as {
+    const payload = jwt.verify(token, getAccessTokenSecret()) as {
       sub: string;
       type?: string;
     };
@@ -479,7 +495,7 @@ export function generateMagicLinkToken(
 ): string {
   return jwt.sign(
     { tenant_id: tenantId, email, type: 'magic_link' },
-    ACCESS_TOKEN_SECRET,
+    getAccessTokenSecret(),
     { expiresIn: '15m' }
   );
 }
@@ -491,7 +507,7 @@ export async function verifyMagicLinkToken(
   token: string
 ): Promise<{ tenant_id: string; email: string }> {
   try {
-    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as {
+    const payload = jwt.verify(token, getAccessTokenSecret()) as {
       tenant_id: string;
       email: string;
       type?: string;
