@@ -13,6 +13,11 @@ import { extractSessionId, validateSession } from '@/lib/session';
 import { verifyAccessToken } from '@/lib/auth';
 import { publishEventBroadcast } from '@/lib/realtime/server';
 import { resolveOptionalAuth, resolveRequiredTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 export const runtime = 'nodejs';
 
@@ -40,6 +45,8 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    assertEventFeatureEnabled(event, 'lucky_draw_enabled');
 
     // Get active draw configuration
     const config = await getActiveConfig(tenantId, eventId);
@@ -107,6 +114,9 @@ export async function POST(
       message: 'Draw executed successfully',
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     console.error('[API] Draw execution error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
@@ -204,6 +214,8 @@ export async function PUT(
       );
     }
 
+    assertEventFeatureEnabled(event, 'lucky_draw_enabled');
+
     // Parse request body
     const body = await request.json();
     const {
@@ -290,6 +302,9 @@ export async function PUT(
       message: 'Draw configuration created successfully',
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     console.error('[API] Config error:', error);
     return NextResponse.json(
       { error: 'Failed to save configuration', code: 'CONFIG_ERROR' },

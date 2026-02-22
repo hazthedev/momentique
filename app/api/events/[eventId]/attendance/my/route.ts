@@ -6,6 +6,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { resolveOptionalAuth, resolveTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 type RouteContext = {
   params: Promise<{ eventId: string }>;
@@ -55,13 +60,7 @@ export async function GET(
       );
     }
 
-    // Check if attendance feature is enabled
-    if (event.settings?.features?.attendance_enabled === false) {
-      return NextResponse.json(
-        { error: 'Attendance feature is disabled', code: 'FEATURE_DISABLED' },
-        { status: 400 }
-      );
-    }
+    assertEventFeatureEnabled(event, 'attendance_enabled');
 
     // Look for attendance record by fingerprint
     // Try with both direct fingerprint and guest_ prefix
@@ -105,6 +104,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     if (error instanceof Error && error.message.includes('Tenant context missing')) {
       return NextResponse.json(
         { error: 'Tenant not found', code: 'TENANT_NOT_FOUND' },

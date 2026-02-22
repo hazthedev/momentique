@@ -10,6 +10,11 @@ import { extractSessionId, validateSession } from '@/lib/session';
 import { verifyAccessToken } from '@/lib/auth';
 import { publishEventBroadcast } from '@/lib/realtime/server';
 import { resolveOptionalAuth, resolveRequiredTenantId } from '@/lib/api-request-context';
+import {
+    assertEventFeatureEnabled,
+    buildFeatureDisabledPayload,
+    isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 export const runtime = 'nodejs';
 
@@ -28,6 +33,24 @@ export async function POST(
         const tenantId = resolveRequiredTenantId(headers, authContext);
 
         const db = getTenantDb(tenantId);
+
+        const event = await db.findOne<{
+            id: string;
+            settings?: {
+                features?: {
+                    lucky_draw_enabled?: boolean;
+                };
+            };
+        }>('events', { id: eventId });
+
+        if (!event) {
+            return NextResponse.json(
+                { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
+                { status: 404 }
+            );
+        }
+
+        assertEventFeatureEnabled(event, 'lucky_draw_enabled');
 
         // Parse request body
         const body = await request.json();
@@ -96,6 +119,9 @@ export async function POST(
             message: `Redraw successful. New winner: ${result.newWinner.participantName}`,
         });
     } catch (error) {
+        if (isFeatureDisabledError(error)) {
+            return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+        }
         console.error('[API] Redraw error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(

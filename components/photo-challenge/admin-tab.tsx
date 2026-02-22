@@ -7,21 +7,37 @@
 import { useState, useEffect } from 'react';
 import { Target, Gift, Users, Check, X, Loader2, Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { FeatureDisabledNotice } from '@/components/features/FeatureDisabledNotice';
 import { PhotoChallengeSettingsForm } from '@/components/photo-challenge/settings-form';
 import type { IPhotoChallenge, IGuestPhotoProgress } from '@/lib/types';
 
 interface PhotoChallengeAdminTabProps {
   eventId: string;
+  featureEnabled?: boolean;
+  settingsFeaturesHref?: string;
 }
 
-export function PhotoChallengeAdminTab({ eventId }: PhotoChallengeAdminTabProps) {
+export function PhotoChallengeAdminTab({
+  eventId,
+  featureEnabled = true,
+  settingsFeaturesHref,
+}: PhotoChallengeAdminTabProps) {
   const [challenge, setChallenge] = useState<IPhotoChallenge | null>(null);
   const [progress, setProgress] = useState<IGuestPhotoProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [featureDisabled, setFeatureDisabled] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    if (!featureEnabled) {
+      setFeatureDisabled(true);
+      setIsLoading(false);
+      setChallenge(null);
+      setProgress([]);
+      return;
+    }
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -31,8 +47,17 @@ export function PhotoChallengeAdminTab({ eventId }: PhotoChallengeAdminTabProps)
         ]);
 
         if (configRes.ok) {
+          setFeatureDisabled(false);
           const configData = await configRes.json();
           setChallenge(configData.data);
+        } else {
+          const configData = await configRes.json().catch(() => null) as { code?: string } | null;
+          if (configRes.status === 400 && configData?.code === 'FEATURE_DISABLED') {
+            setFeatureDisabled(true);
+            setChallenge(null);
+            setProgress([]);
+            return;
+          }
         }
 
         if (progressRes.ok) {
@@ -47,7 +72,7 @@ export function PhotoChallengeAdminTab({ eventId }: PhotoChallengeAdminTabProps)
     };
 
     fetchData();
-  }, [eventId]);
+  }, [eventId, featureEnabled]);
 
   const handleDelete = async () => {
     if (!challenge) return;
@@ -79,6 +104,16 @@ export function PhotoChallengeAdminTab({ eventId }: PhotoChallengeAdminTabProps)
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
+    );
+  }
+
+  if (!featureEnabled || featureDisabled) {
+    return (
+      <FeatureDisabledNotice
+        featureName="Photo Challenge"
+        settingsFeaturesHref={settingsFeaturesHref}
+        description="Enable Photo Challenge in Event Settings to create, edit, and manage challenge prizes."
+      />
     );
   }
 

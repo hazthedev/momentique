@@ -6,6 +6,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { hasModeratorRole, requireAuthForApi } from '@/lib/auth';
 import { resolveOptionalAuth, resolveTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 type RouteContext = {
   params: Promise<{ eventId: string }>;
@@ -14,6 +19,11 @@ type RouteContext = {
 type EventAccessRecord = {
   id: string;
   organizer_id: string;
+  settings?: {
+    features?: {
+      photo_challenge_enabled?: boolean;
+    };
+  };
 };
 
 async function requirePhotoChallengeManageAccess(
@@ -31,6 +41,7 @@ async function requirePhotoChallengeManageAccess(
   if (!event) {
     throw new Error('Event not found');
   }
+  assertEventFeatureEnabled(event, 'photo_challenge_enabled');
 
   if (payload.role === 'organizer' && event.organizer_id !== userId) {
     throw new Error('Forbidden');
@@ -44,6 +55,10 @@ function getMutationErrorResponse(
   fallbackError: string,
   fallbackCode: string
 ) {
+  if (isFeatureDisabledError(error)) {
+    return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+  }
+
   if (error instanceof Error) {
     if (
       error.message.includes('Authentication required') ||
@@ -90,13 +105,21 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const db = getTenantDb(tenantId);
 
     // Check if event exists
-    const event = await db.findOne('events', { id: eventId });
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          photo_challenge_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
       );
     }
+    assertEventFeatureEnabled(event, 'photo_challenge_enabled');
 
     // Get photo challenge configuration
     const challenge = await db.findOne('photo_challenges', { event_id: eventId });
@@ -113,6 +136,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
       enabled: challenge.enabled,
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     console.error('[PHOTO_CHALLENGE] GET error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch photo challenge', code: 'FETCH_ERROR' },

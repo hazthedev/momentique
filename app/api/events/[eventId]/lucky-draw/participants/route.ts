@@ -6,6 +6,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { getActiveConfig, getEventEntries } from '@/lib/lucky-draw';
 import { resolveOptionalAuth, resolveTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 export const runtime = 'nodejs';
 
@@ -31,13 +36,21 @@ export async function GET(
     const db = getTenantDb(tenantId);
 
     // Verify event exists
-    const event = await db.findOne('events', { id: eventId });
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          lucky_draw_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
       );
     }
+    assertEventFeatureEnabled(event, 'lucky_draw_enabled');
 
     // Get active config
     const config = await getActiveConfig(tenantId, eventId);
@@ -99,6 +112,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     if (isRecoverableReadError(error)) {
       return NextResponse.json({
         data: [],

@@ -9,12 +9,14 @@ import { Users, Download, Upload, UserPlus, Loader2, Search, ChevronLeft, Chevro
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { OrganizerQRScanner } from '@/components/attendance/OrganizerQRScanner';
+import { FeatureDisabledNotice } from '@/components/features/FeatureDisabledNotice';
 import { generateCheckInUrl, generateCheckInQRCodeUrl } from '@/lib/qrcode';
 
 interface AttendanceAdminTabProps {
   eventId: string;
   initialTab?: AdminSubTab;
   attendanceEnabled?: boolean;
+  settingsFeaturesHref?: string;
 }
 
 interface AttendanceRecord {
@@ -38,7 +40,12 @@ interface AttendanceStats {
 
 type AdminSubTab = 'overview' | 'guests' | 'manual' | 'import' | 'qr';
 
-export function AttendanceAdminTab({ eventId, initialTab, attendanceEnabled = true }: AttendanceAdminTabProps) {
+export function AttendanceAdminTab({
+  eventId,
+  initialTab,
+  attendanceEnabled = true,
+  settingsFeaturesHref,
+}: AttendanceAdminTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<AdminSubTab>(initialTab || 'overview');
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [stats, setStats] = useState<AttendanceStats | null>(null);
@@ -217,12 +224,11 @@ export function AttendanceAdminTab({ eventId, initialTab, attendanceEnabled = tr
 
   if (!attendanceEnabled || featureDisabled) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
-        <h3 className="text-base font-semibold">Attendance is disabled</h3>
-        <p className="mt-2 text-sm">
-          Enable Attendance in Event Settings to use check-ins, guest lists, and attendance export.
-        </p>
-      </div>
+      <FeatureDisabledNotice
+        featureName="Attendance"
+        settingsFeaturesHref={settingsFeaturesHref}
+        description="Enable Attendance in Event Settings to use check-ins, guest lists, and attendance export."
+      />
     );
   }
 

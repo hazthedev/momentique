@@ -5,6 +5,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { requireAuthForApi } from '@/lib/auth';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 type RouteContext = {
   params: Promise<{ eventId: string }>;
@@ -19,7 +24,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const { eventId } = await context.params;
 
     // Authenticate organizer
-    const { userId, tenantId } = await requireAuthForApi(req.headers);
+    const { tenantId } = await requireAuthForApi(req.headers);
 
     const body = await req.json();
 
@@ -35,13 +40,21 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const db = getTenantDb(tenantId);
 
     // Check if event exists
-    const event = await db.findOne('events', { id: eventId });
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          photo_challenge_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
       );
     }
+    assertEventFeatureEnabled(event, 'photo_challenge_enabled');
 
     // Revoke the prize
     await db.update(
@@ -67,6 +80,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
       message: 'Prize revoked successfully',
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     console.error('[PHOTO_CHALLENGE_REVOKE] POST error:', error);
     return NextResponse.json(
       { error: 'Failed to revoke prize', code: 'REVOKE_ERROR' },

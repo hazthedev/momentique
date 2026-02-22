@@ -12,6 +12,11 @@ import {
   getLatestConfig,
   getEventEntries,
 } from '@/lib/lucky-draw';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +29,11 @@ const isRecoverableReadError = (error: unknown) =>
 type EventAccessRecord = {
   id: string;
   organizer_id: string;
+  settings?: {
+    features?: {
+      lucky_draw_enabled?: boolean;
+    };
+  };
 };
 
 async function requireConfigWriteAccess(
@@ -44,6 +54,7 @@ async function requireConfigWriteAccess(
   if (!event) {
     throw new Error('Event not found');
   }
+  assertEventFeatureEnabled(event, 'lucky_draw_enabled');
 
   if (payload.role === 'organizer' && event.organizer_id !== userId) {
     throw new Error('Forbidden');
@@ -53,6 +64,10 @@ async function requireConfigWriteAccess(
 }
 
 function getConfigMutationError(error: unknown) {
+  if (isFeatureDisabledError(error)) {
+    return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+  }
+
   if (error instanceof Error) {
     if (
       error.message.includes('Authentication required') ||
@@ -108,6 +123,7 @@ export async function GET(
         { status: 404 }
       );
     }
+    assertEventFeatureEnabled(event, 'lucky_draw_enabled');
 
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get('active') === 'true';
@@ -143,6 +159,9 @@ export async function GET(
       warnings: warnings.length > 0 ? warnings : undefined,
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     if (isRecoverableReadError(error)) {
       return NextResponse.json({
         data: null,

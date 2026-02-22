@@ -8,6 +8,11 @@ import { verifyAccessToken } from '@/lib/auth';
 import { createManualEntries, getActiveConfig, getEventEntries } from '@/lib/lucky-draw';
 import { extractSessionId, validateSession } from '@/lib/session';
 import { resolveOptionalAuth, resolveRequiredTenantId, resolveTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 export const runtime = 'nodejs';
 
@@ -33,13 +38,21 @@ export async function GET(
     const db = getTenantDb(tenantId);
 
     // Verify event exists
-    const event = await db.findOne('events', { id: eventId });
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          lucky_draw_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
       );
     }
+    assertEventFeatureEnabled(event, 'lucky_draw_enabled');
 
     // Get active config
     const config = await getActiveConfig(tenantId, eventId);
@@ -88,6 +101,9 @@ export async function GET(
       warnings: warnings.length > 0 ? warnings : undefined,
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     if (isRecoverableReadError(error)) {
       return NextResponse.json({
         data: [],
@@ -171,13 +187,21 @@ export async function POST(
       );
     }
 
-    const event = await db.findOne('events', { id: eventId });
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          lucky_draw_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
       );
     }
+    assertEventFeatureEnabled(event, 'lucky_draw_enabled');
 
     const body = await request.json();
     const participantName = typeof body.participantName === 'string' ? body.participantName.trim() : '';
@@ -264,6 +288,9 @@ export async function POST(
       message: 'Manual entries created successfully',
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     const message = error instanceof Error ? error.message : 'Failed to create manual entries';
     const status = message.includes('Maximum entries per user') || message.includes('No active draw configuration')
       ? 400

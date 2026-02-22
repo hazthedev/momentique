@@ -5,7 +5,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -29,16 +29,65 @@ import { PhotoChallengeAdminTab } from '@/components/photo-challenge/admin-tab';
 import { SettingsAdminTab } from '@/components/settings/SettingsAdminTab';
 import { toast } from 'sonner';
 import type { IEvent } from '@/lib/types';
+import type { SettingsFeatureHighlight, SettingsSubTab } from '@/components/settings/types';
+
+type AdminTab = 'overview' | 'qr' | 'lucky_draw' | 'attendance' | 'settings' | 'moderation' | 'photo_challenge';
+
+const ADMIN_TABS: AdminTab[] = [
+  'overview',
+  'qr',
+  'lucky_draw',
+  'attendance',
+  'settings',
+  'moderation',
+  'photo_challenge',
+];
+
+const SETTINGS_SUB_TABS: SettingsSubTab[] = ['basic', 'theme', 'features', 'security', 'advanced'];
+const HIGHLIGHT_FEATURES: SettingsFeatureHighlight[] = [
+  'attendance',
+  'lucky_draw',
+  'photo_challenge',
+  'guest_download',
+  'moderation',
+  'anonymous',
+];
+
+function parseAdminTab(tab: string | null): AdminTab {
+  if (tab && ADMIN_TABS.includes(tab as AdminTab)) {
+    return tab as AdminTab;
+  }
+
+  return 'overview';
+}
+
+function parseSettingsSubTab(subTab: string | null): SettingsSubTab {
+  if (subTab && SETTINGS_SUB_TABS.includes(subTab as SettingsSubTab)) {
+    return subTab as SettingsSubTab;
+  }
+
+  return 'basic';
+}
+
+function parseHighlightFeature(feature: string | null): SettingsFeatureHighlight | undefined {
+  if (feature && HIGHLIGHT_FEATURES.includes(feature as SettingsFeatureHighlight)) {
+    return feature as SettingsFeatureHighlight;
+  }
+
+  return undefined;
+}
 
 export default function EventAdminPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const eventId = params.eventId as string;
 
   const [event, setEvent] = useState<IEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'qr' | 'lucky_draw' | 'attendance' | 'settings' | 'moderation' | 'photo_challenge'>('overview');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTab(searchParams.get('tab')));
   const [moderationLogs, setModerationLogs] = useState<Array<{
     id: string;
     photoId: string;
@@ -77,6 +126,31 @@ export default function EventAdminPage() {
   }, [eventId]);
 
   useEffect(() => {
+    const requestedTab = parseAdminTab(searchParams.get('tab'));
+    if (requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams, activeTab]);
+
+  useEffect(() => {
+    const currentTab = parseAdminTab(searchParams.get('tab'));
+    if (currentTab === activeTab) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set('tab', activeTab);
+
+    if (activeTab !== 'settings') {
+      nextParams.delete('subTab');
+      nextParams.delete('feature');
+    }
+
+    const queryString = nextParams.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [activeTab, pathname, router, searchParams]);
+
+  useEffect(() => {
     if (activeTab !== 'moderation') return;
 
     const fetchLogs = async () => {
@@ -105,6 +179,11 @@ export default function EventAdminPage() {
     { id: 'settings' as const, label: 'Settings', icon: Settings },
     { id: 'moderation' as const, label: 'Moderation', icon: Shield },
   ];
+
+  const settingsSubTab = parseSettingsSubTab(searchParams.get('subTab'));
+  const highlightFeature = parseHighlightFeature(searchParams.get('feature'));
+  const settingsFeatureHref = (feature: SettingsFeatureHighlight) =>
+    `/organizer/events/${eventId}/admin?tab=settings&subTab=features&feature=${feature}`;
 
   if (isLoading) {
     return (
@@ -188,7 +267,11 @@ export default function EventAdminPage() {
               <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
                 Configure prize tiers, view entries, execute draws, and announce winners
               </p>
-              <LuckyDrawAdminTab eventId={eventId} />
+              <LuckyDrawAdminTab
+                eventId={eventId}
+                featureEnabled={event.settings?.features?.lucky_draw_enabled !== false}
+                settingsFeaturesHref={settingsFeatureHref('lucky_draw')}
+              />
             </div>
           )}
 
@@ -204,6 +287,7 @@ export default function EventAdminPage() {
               <AttendanceAdminTab
                 eventId={eventId}
                 attendanceEnabled={event.settings?.features?.attendance_enabled !== false}
+                settingsFeaturesHref={settingsFeatureHref('attendance')}
               />
             </div>
           )}
@@ -216,7 +300,11 @@ export default function EventAdminPage() {
               <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
                 Motivate guests to upload more photos with goals and prizes
               </p>
-              <PhotoChallengeAdminTab eventId={eventId} />
+              <PhotoChallengeAdminTab
+                eventId={eventId}
+                featureEnabled={event.settings?.features?.photo_challenge_enabled !== false}
+                settingsFeaturesHref={settingsFeatureHref('photo_challenge')}
+              />
             </div>
           )}
 
@@ -281,6 +369,8 @@ export default function EventAdminPage() {
               <SettingsAdminTab
                 event={event}
                 onUpdate={(updatedEvent) => setEvent(updatedEvent)}
+                initialSubTab={settingsSubTab}
+                highlightFeature={highlightFeature}
               />
             </div>
           )}

@@ -5,6 +5,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { requireAuthForApi } from '@/lib/auth';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 type RouteContext = {
   params: Promise<{ eventId: string }>;
@@ -19,7 +24,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const { eventId } = await context.params;
 
     // Authenticate organizer
-    const { userId, tenantId } = await requireAuthForApi(req.headers);
+    const { tenantId } = await requireAuthForApi(req.headers);
 
     const body = await req.json();
     const { token } = body;
@@ -32,6 +37,24 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     const db = getTenantDb(tenantId);
+
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          photo_challenge_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
+
+    if (!event) {
+      return NextResponse.json(
+        { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    assertEventFeatureEnabled(event, 'photo_challenge_enabled');
 
     // Find the prize claim
     const claim = await db.findOne('prize_claims', {
@@ -78,6 +101,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     console.error('[PHOTO_CHALLENGE_VERIFY] POST error:', error);
 
     if (error instanceof Error && error.message.includes('Authentication required')) {

@@ -108,6 +108,7 @@ export default function AttendancePage() {
           <AttendanceAdminTab
             eventId={eventId}
             attendanceEnabled={event.settings?.features?.attendance_enabled !== false}
+            settingsFeaturesHref={`/organizer/events/${eventId}/admin?tab=settings&subTab=features&feature=attendance`}
           />
         </div>
       </div>

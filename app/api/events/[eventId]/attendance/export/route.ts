@@ -8,6 +8,11 @@ import { verifyAccessToken } from '@/lib/auth';
 import { extractSessionId, validateSession } from '@/lib/session';
 import type { IAttendance } from '@/lib/types';
 import { resolveOptionalAuth, resolveRequiredTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 // ============================================
 // GET /api/events/:eventId/attendance/export
@@ -55,6 +60,24 @@ export async function GET(
       );
     }
 
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          attendance_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
+
+    if (!event) {
+      return NextResponse.json(
+        { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    assertEventFeatureEnabled(event, 'attendance_enabled');
+
     // Fetch all attendance records sorted by check-in time
     const result = await db.query<IAttendance>(
       `SELECT * FROM attendances
@@ -89,6 +112,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     if (error instanceof Error && error.message.includes('Tenant context missing')) {
       return NextResponse.json(
         { error: 'Tenant not found', code: 'TENANT_NOT_FOUND' },

@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import clsx from 'clsx';
 import { Check, Download, Eye, Hash, Loader2, Sparkles, Target, Users } from 'lucide-react';
+import type { SettingsFeatureHighlight } from '@/components/settings/types';
 
 interface FeaturesTabProps {
   guestDownloadEnabled: boolean;
@@ -19,6 +21,7 @@ interface FeaturesTabProps {
   hasChanges: boolean;
   onSave: () => void;
   onDirty: () => void;
+  highlightFeature?: SettingsFeatureHighlight;
 }
 
 export function FeaturesTab({
@@ -38,7 +41,23 @@ export function FeaturesTab({
   hasChanges,
   onSave,
   onDirty,
+  highlightFeature,
 }: FeaturesTabProps) {
+  useEffect(() => {
+    if (!highlightFeature) {
+      return;
+    }
+
+    const highlightedEl = document.getElementById(`feature-toggle-${highlightFeature}`);
+    highlightedEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightFeature]);
+
+  const getCardClasses = (feature: SettingsFeatureHighlight) =>
+    clsx(
+      'flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors',
+      highlightFeature === feature && 'ring-2 ring-violet-500 ring-offset-2 dark:ring-violet-400 dark:ring-offset-gray-900'
+    );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -58,7 +77,7 @@ export function FeaturesTab({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+        <label id="feature-toggle-lucky_draw" className={getCardClasses('lucky_draw')}>
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             <div>
@@ -78,7 +97,7 @@ export function FeaturesTab({
           />
         </label>
 
-        <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+        <label id="feature-toggle-attendance" className={getCardClasses('attendance')}>
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             <div>
@@ -98,7 +117,7 @@ export function FeaturesTab({
           />
         </label>
 
-        <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+        <label id="feature-toggle-photo_challenge" className={getCardClasses('photo_challenge')}>
           <div className="flex items-center gap-3">
             <Target className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             <div>
@@ -118,7 +137,7 @@ export function FeaturesTab({
           />
         </label>
 
-        <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+        <label id="feature-toggle-guest_download" className={getCardClasses('guest_download')}>
           <div className="flex items-center gap-3">
             <Download className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             <div>
@@ -138,7 +157,7 @@ export function FeaturesTab({
           />
         </label>
 
-        <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+        <label id="feature-toggle-moderation" className={getCardClasses('moderation')}>
           <div className="flex items-center gap-3">
             <Eye className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             <div>
@@ -158,7 +177,7 @@ export function FeaturesTab({
           />
         </label>
 
-        <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:border-violet-300 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-violet-500 transition-colors">
+        <label id="feature-toggle-anonymous" className={getCardClasses('anonymous')}>
           <div className="flex items-center gap-3">
             <Hash className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             <div>

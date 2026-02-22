@@ -8,6 +8,11 @@ import { verifyAccessToken } from '@/lib/auth';
 import { extractSessionId, validateSession } from '@/lib/session';
 import type { IAttendance, IAttendanceCreate, CheckInMethod } from '@/lib/types';
 import { resolveOptionalAuth, resolveRequiredTenantId, resolveTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 // ============================================
 // TYPES
@@ -53,13 +58,7 @@ export async function GET(
       );
     }
 
-    // Check if attendance feature is enabled
-    if (event.settings?.features?.attendance_enabled === false) {
-      return NextResponse.json(
-        { error: 'Attendance feature is disabled', code: 'FEATURE_DISABLED' },
-        { status: 400 }
-      );
-    }
+    assertEventFeatureEnabled(event, 'attendance_enabled');
 
     // Verify authorization (organizer only)
     const authHeader = headers.get('authorization');
@@ -117,6 +116,9 @@ export async function GET(
       pagination: { limit, offset, total }
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     if (isMissingTableError(error)) {
       return NextResponse.json({
         data: [],
@@ -164,13 +166,7 @@ export async function POST(
       );
     }
 
-    // Check if attendance is enabled
-    if (event.settings?.features?.attendance_enabled === false) {
-      return NextResponse.json(
-        { error: 'Attendance check-in is disabled', code: 'FEATURE_DISABLED' },
-        { status: 400 }
-      );
-    }
+    assertEventFeatureEnabled(event, 'attendance_enabled');
 
     const body = await request.json() as IAttendanceCreate;
 
@@ -255,6 +251,9 @@ export async function POST(
       message: 'Check-in successful'
     }, { status: 201 });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     console.error('[API] Check-in error:', error);
     return NextResponse.json(
       { error: 'Failed to check in', code: 'CHECKIN_ERROR' },

@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Calendar,
   Palette,
@@ -24,15 +24,22 @@ import { BasicTab } from './tabs/BasicTab';
 import { FeaturesTab } from './tabs/FeaturesTab';
 import { SecurityTab } from './tabs/SecurityTab';
 import { ThemeTab } from './tabs/ThemeTab';
-import type { SettingsSubTab } from './types';
+import type { SettingsFeatureHighlight, SettingsSubTab } from './types';
 
 interface SettingsAdminTabProps {
   event: IEvent;
   onUpdate?: (event: IEvent) => void;
+  initialSubTab?: SettingsSubTab;
+  highlightFeature?: SettingsFeatureHighlight;
 }
 
-export function SettingsAdminTab({ event, onUpdate }: SettingsAdminTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<SettingsSubTab>('basic');
+export function SettingsAdminTab({
+  event,
+  onUpdate,
+  initialSubTab = 'basic',
+  highlightFeature,
+}: SettingsAdminTabProps) {
+  const [activeSubTab, setActiveSubTab] = useState<SettingsSubTab>(initialSubTab);
   const [isLoading, setIsLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -112,6 +119,10 @@ export function SettingsAdminTab({ event, onUpdate }: SettingsAdminTabProps) {
   ];
 
   const markDirty = () => setHasChanges(true);
+
+  useEffect(() => {
+    setActiveSubTab(initialSubTab);
+  }, [initialSubTab]);
 
   const handleSave = async (section?: SettingsSubTab) => {
     setIsLoading(true);
@@ -259,6 +270,7 @@ export function SettingsAdminTab({ event, onUpdate }: SettingsAdminTabProps) {
           hasChanges={hasChanges}
           onSave={() => handleSave('features')}
           onDirty={markDirty}
+          highlightFeature={highlightFeature}
         />
       )}
       {activeSubTab === 'security' && (

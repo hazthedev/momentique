@@ -19,6 +19,7 @@ import {
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import type { LuckyDrawConfig, LuckyDrawEntry, Winner } from '@/lib/types';
+import { FeatureDisabledNotice } from '@/components/features/FeatureDisabledNotice';
 import { WinnerModal } from './WinnerModal';
 import { ConfigTab } from './tabs/ConfigTab';
 import { DrawTab } from './tabs/DrawTab';
@@ -41,13 +42,19 @@ import { buildConfigForm, createPrizeTier } from './utils';
 
 interface LuckyDrawAdminTabProps {
   eventId: string;
+  featureEnabled?: boolean;
+  settingsFeaturesHref?: string;
 }
 
 // ============================================
 // MAIN COMPONENT
 // ============================================
 
-export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
+export function LuckyDrawAdminTab({
+  eventId,
+  featureEnabled = true,
+  settingsFeaturesHref,
+}: LuckyDrawAdminTabProps) {
   // Sub-tab state
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('config');
 
@@ -67,6 +74,7 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
 
   // UI state
   const [isLoading, setIsLoading] = useState(true);
+  const [featureDisabled, setFeatureDisabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -98,18 +106,36 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
 
   // Fetch all data on mount
   useEffect(() => {
+    if (!featureEnabled) {
+      setFeatureDisabled(true);
+      setIsLoading(false);
+      setConfig(null);
+      setEntries([]);
+      setEntriesTotal(0);
+      setDrawHistory([]);
+      setParticipants([]);
+      setError(null);
+      return;
+    }
+
     fetchAllData();
-  }, [eventId]);
+  }, [eventId, featureEnabled]);
 
   useEffect(() => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
     fetchEntries();
-  }, [eventId, entriesPage]);
+  }, [eventId, entriesPage, featureEnabled, featureDisabled]);
 
   useEffect(() => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
     if (activeSubTab === 'participants') {
       fetchParticipants();
     }
-  }, [activeSubTab, eventId]);
+  }, [activeSubTab, eventId, featureEnabled, featureDisabled]);
 
   useEffect(() => {
     // Always show the edit form with config data pre-filled
@@ -119,6 +145,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
 
   // Poll for updates every 30s
   useEffect(() => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
+
     const interval = setInterval(() => {
       // Only poll if tab is active (user is viewing)
       fetchEntries();
@@ -126,7 +156,7 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [eventId]);
+  }, [eventId, featureEnabled, featureDisabled]);
 
   // Clear success messages after 3 seconds
   useEffect(() => {
@@ -166,6 +196,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
   };
 
   const fetchConfig = async () => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
+
     try {
       const response = await fetch(`/api/events/${eventId}/lucky-draw/config`, {
         credentials: 'include',
@@ -173,7 +207,12 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
       const data = await response.json();
 
       if (response.ok) {
+        setFeatureDisabled(false);
         setConfig(data.data || null);
+        setError(null);
+      } else if (response.status === 400 && data?.code === 'FEATURE_DISABLED') {
+        setFeatureDisabled(true);
+        setConfig(null);
         setError(null);
       } else if (response.status !== 404) {
         setError(data.error || 'Failed to fetch config');
@@ -188,6 +227,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
   };
 
     const fetchEntries = async () => {
+      if (!featureEnabled || featureDisabled) {
+        return;
+      }
+
       try {
         const response = await fetch(
           `/api/events/${eventId}/lucky-draw/entries?limit=${entriesPageSize}&offset=${entriesPage * entriesPageSize}`,
@@ -203,6 +246,14 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
         setError(null);
       } else {
         const data = await response.json();
+        if (response.status === 400 && data?.code === 'FEATURE_DISABLED') {
+          setFeatureDisabled(true);
+          setConfig(null);
+          setEntries([]);
+          setEntriesTotal(0);
+          setError(null);
+          return;
+        }
         setError(data.error || 'Failed to fetch entries');
       }
     } catch (err) {
@@ -212,6 +263,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
     };
 
     const fetchDrawEntries = async () => {
+      if (!featureEnabled || featureDisabled) {
+        return;
+      }
+
       try {
         const limit = Math.max(entriesTotal, entriesPageSize, 1);
         const response = await fetch(
@@ -234,6 +289,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
     };
 
   const fetchDraws = async () => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
+
     try {
       const response = await fetch(`/api/events/${eventId}/lucky-draw/history`, {
         credentials: 'include',
@@ -245,6 +304,13 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
         setError(null);
       } else {
         const data = await response.json();
+        if (response.status === 400 && data?.code === 'FEATURE_DISABLED') {
+          setFeatureDisabled(true);
+          setConfig(null);
+          setDrawHistory([]);
+          setError(null);
+          return;
+        }
         setError(data.error || 'Failed to fetch draw history');
       }
     } catch (err) {
@@ -254,6 +320,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
   };
 
   const fetchParticipants = async () => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
+
     setParticipantsLoading(true);
     setParticipantsError(null);
     try {
@@ -271,6 +341,17 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
         });
       } else {
         const data = await response.json();
+        if (response.status === 400 && data?.code === 'FEATURE_DISABLED') {
+          setFeatureDisabled(true);
+          setParticipants([]);
+          setParticipantsSummary({
+            total: 0,
+            uniqueParticipants: 0,
+            totalEntries: 0,
+          });
+          setParticipantsError(null);
+          return;
+        }
         setParticipantsError(data.error || 'Failed to fetch participants');
       }
     } catch (err) {
@@ -282,6 +363,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
   };
 
   const fetchAllData = async () => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     await Promise.all([
@@ -294,6 +379,10 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
   };
 
   const refreshData = async () => {
+    if (!featureEnabled || featureDisabled) {
+      return;
+    }
+
     setIsRefreshing(true);
     setError(null);
     await Promise.all([fetchConfig(), fetchEntries(), fetchDraws()]);
@@ -640,6 +729,16 @@ export function LuckyDrawAdminTab({ eventId }: LuckyDrawAdminTabProps) {
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
+    );
+  }
+
+  if (!featureEnabled || featureDisabled) {
+    return (
+      <FeatureDisabledNotice
+        featureName="Lucky Draw"
+        settingsFeaturesHref={settingsFeaturesHref}
+        description="Enable Lucky Draw in Event Settings to configure prizes, entries, and draw execution."
+      />
     );
   }
 

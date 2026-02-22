@@ -5,6 +5,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantDb } from '@/lib/db';
 import { resolveOptionalAuth, resolveTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 type RouteContext = {
   params: Promise<{ eventId: string }>;
@@ -34,13 +39,21 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const db = getTenantDb(tenantId);
 
     // Check if event exists
-    const event = await db.findOne('events', { id: eventId });
+    const event = await db.findOne<{
+      id: string;
+      settings?: {
+        features?: {
+          photo_challenge_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
       );
     }
+    assertEventFeatureEnabled(event, 'photo_challenge_enabled');
 
     // Check if photo challenge is enabled
     const challenge = await db.findOne('photo_challenges', {
@@ -90,6 +103,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     if (error instanceof Error && error.message.includes('Tenant context missing')) {
       return NextResponse.json(
         { error: 'Tenant not found', code: 'TENANT_NOT_FOUND' },

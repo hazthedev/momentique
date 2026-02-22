@@ -8,6 +8,11 @@ import { verifyAccessToken } from '@/lib/auth';
 import { extractSessionId, validateSession } from '@/lib/session';
 import type { IAttendance, IAttendanceCreate } from '@/lib/types';
 import { resolveOptionalAuth, resolveRequiredTenantId } from '@/lib/api-request-context';
+import {
+  assertEventFeatureEnabled,
+  buildFeatureDisabledPayload,
+  isFeatureDisabledError,
+} from '@/lib/event-feature-gate';
 
 // ============================================
 // POST /api/events/:eventId/attendance/manual
@@ -67,7 +72,15 @@ export async function POST(
     }
 
     // Verify event exists
-    const event = await db.findOne<{ id: string; status: string }>('events', { id: eventId });
+    const event = await db.findOne<{
+      id: string;
+      status: string;
+      settings?: {
+        features?: {
+          attendance_enabled?: boolean;
+        };
+      };
+    }>('events', { id: eventId });
 
     if (!event) {
       return NextResponse.json(
@@ -75,6 +88,8 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    assertEventFeatureEnabled(event, 'attendance_enabled');
 
     const body = await request.json() as IAttendanceCreate;
 
@@ -156,6 +171,9 @@ export async function POST(
       message: 'Manual check-in successful'
     }, { status: 201 });
   } catch (error) {
+    if (isFeatureDisabledError(error)) {
+      return NextResponse.json(buildFeatureDisabledPayload(error.feature), { status: 400 });
+    }
     console.error('[API] Manual check-in error:', error);
     return NextResponse.json(
       { error: 'Failed to check in', code: 'CHECKIN_ERROR' },
