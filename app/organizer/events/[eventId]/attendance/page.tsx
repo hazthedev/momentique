@@ -105,7 +105,10 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          <AttendanceAdminTab eventId={eventId} />
+          <AttendanceAdminTab
+            eventId={eventId}
+            attendanceEnabled={event.settings?.features?.attendance_enabled !== false}
+          />
         </div>
       </div>
     </div>

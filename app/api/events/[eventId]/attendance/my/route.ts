@@ -70,8 +70,8 @@ export async function GET(
       event_id: string;
       guest_name: string;
       user_fingerprint: string;
-      checked_in_at: Date;
-    }>('attendance', {
+      check_in_time: Date;
+    }>('attendances', {
       event_id: eventId,
       user_fingerprint: fingerprint,
     });
@@ -83,8 +83,8 @@ export async function GET(
         event_id: string;
         guest_name: string;
         user_fingerprint: string;
-        checked_in_at: Date;
-      }>('attendance', {
+        check_in_time: Date;
+      }>('attendances', {
         event_id: eventId,
         user_fingerprint: `guest_${fingerprint}`,
       });
@@ -101,7 +101,7 @@ export async function GET(
         id: attendance.id,
         event_id: attendance.event_id,
         guest_name: attendance.guest_name,
-        checked_in_at: attendance.checked_in_at,
+        checked_in_at: attendance.check_in_time,
       },
     });
   } catch (error) {

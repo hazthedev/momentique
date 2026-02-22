@@ -201,7 +201,10 @@ export default function EventAdminPage() {
                 Manage check-ins, view guest lists, generate QR codes, and track attendance data
               </p>
 
-              <AttendanceAdminTab eventId={eventId} />
+              <AttendanceAdminTab
+                eventId={eventId}
+                attendanceEnabled={event.settings?.features?.attendance_enabled !== false}
+              />
             </div>
           )}
 

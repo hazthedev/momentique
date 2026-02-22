@@ -14,6 +14,7 @@ import { generateCheckInUrl, generateCheckInQRCodeUrl } from '@/lib/qrcode';
 interface AttendanceAdminTabProps {
   eventId: string;
   initialTab?: AdminSubTab;
+  attendanceEnabled?: boolean;
 }
 
 interface AttendanceRecord {
@@ -37,11 +38,12 @@ interface AttendanceStats {
 
 type AdminSubTab = 'overview' | 'guests' | 'manual' | 'import' | 'qr';
 
-export function AttendanceAdminTab({ eventId, initialTab }: AttendanceAdminTabProps) {
+export function AttendanceAdminTab({ eventId, initialTab, attendanceEnabled = true }: AttendanceAdminTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<AdminSubTab>(initialTab || 'overview');
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [featureDisabled, setFeatureDisabled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -59,10 +61,23 @@ export function AttendanceAdminTab({ eventId, initialTab }: AttendanceAdminTabPr
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!attendanceEnabled) {
+      setFeatureDisabled(true);
+      setIsLoading(false);
+      setAttendances([]);
+      setStats(null);
+      setTotalPages(1);
+      return;
+    }
+
     fetchData();
-  }, [eventId, currentPage, activeSubTab]);
+  }, [eventId, currentPage, activeSubTab, attendanceEnabled]);
 
   const fetchData = async () => {
+    if (!attendanceEnabled) {
+      return;
+    }
+
     setIsLoading(true);
     try {
       const [attendanceRes, statsRes] = await Promise.all([
@@ -75,9 +90,19 @@ export function AttendanceAdminTab({ eventId, initialTab }: AttendanceAdminTabPr
       ]);
 
       if (attendanceRes.ok) {
+        setFeatureDisabled(false);
         const data = await attendanceRes.json();
         setAttendances(data.data || []);
         setTotalPages(Math.ceil((data.pagination?.total || 0) / 50));
+      } else {
+        const errorData = await attendanceRes.json().catch(() => null) as { code?: string; error?: string } | null;
+        if (attendanceRes.status === 400 && errorData?.code === 'FEATURE_DISABLED') {
+          setFeatureDisabled(true);
+          setAttendances([]);
+          setStats(null);
+          setTotalPages(1);
+          return;
+        }
       }
 
       if (statsRes.ok) {
@@ -94,6 +119,11 @@ export function AttendanceAdminTab({ eventId, initialTab }: AttendanceAdminTabPr
 
   const handleManualCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!attendanceEnabled || featureDisabled) {
+      toast.error('Attendance is disabled for this event');
+      return;
+    }
+
     if (!manualGuestName.trim()) {
       toast.error('Guest name is required');
       return;
@@ -151,6 +181,11 @@ export function AttendanceAdminTab({ eventId, initialTab }: AttendanceAdminTabPr
   };
 
   const handleExport = async () => {
+    if (!attendanceEnabled || featureDisabled) {
+      toast.error('Attendance is disabled for this event');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/events/${eventId}/attendance/export`, {
         credentials: 'include',
@@ -179,6 +214,17 @@ export function AttendanceAdminTab({ eventId, initialTab }: AttendanceAdminTabPr
     a.guest_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.guest_phone?.includes(searchQuery)
   );
+
+  if (!attendanceEnabled || featureDisabled) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+        <h3 className="text-base font-semibold">Attendance is disabled</h3>
+        <p className="mt-2 text-sm">
+          Enable Attendance in Event Settings to use check-ins, guest lists, and attendance export.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
