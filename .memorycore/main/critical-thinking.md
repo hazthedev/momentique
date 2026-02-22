@@ -33,6 +33,15 @@ Capture reusable engineering reasoning patterns relevant to Galeria/Galeria impl
 - Return additive warnings (`warnings`) with successful payloads for partial data states.
 - Treat recoverable DB drift errors (`42P01`, `42703`) as safe-empty responses on non-critical GET endpoints.
 
+## Feature Toggle Enforcement Patterns
+- Treat settings toggles as dual-surface contracts:
+  1. UI must communicate disabled state clearly.
+  2. APIs must enforce disabled state regardless of UI path.
+- Preserve partial/missing settings semantics by blocking only when feature flag is explicitly `false`.
+- Use a shared gate helper to avoid route-level drift and to standardize payloads (`code: FEATURE_DISABLED`).
+- Keep `EVENT_NOT_FOUND` precedence ahead of feature-disabled checks where applicable.
+- In admin surfaces, prefer actionable remediation UX: disabled callout + deep-link to `Settings > Features`.
+
 ## Debugging and Verification Patterns
 - Use `rg` for fast codebase discovery.
 - Prefer narrow verification commands over broad noisy runs.

@@ -2,52 +2,54 @@
 Temporary working memory for active continuity.
 
 ## Session Snapshot
-- Date: 2026-02-19
+- Date: 2026-02-22
 - Session status: Active
 - User: Hazrin
 - Companion: Rover
 - Working style: Friendly, execution-first
-- Main focus: Stabilize organizer admin fetch reliability (Overview + Lucky Draw tabs)
-
-## Repository Context (Ground Truth)
-- Platform identity: Galeria (SaaS), Galeria branding in app surfaces
-- App stack: Next.js App Router + TypeScript
-- Data stack: PostgreSQL + Drizzle + tenant isolation model (RLS-oriented)
-- Supporting services: Redis, R2/S3 storage pipeline, Rekognition moderation, BullMQ jobs
-- Realtime reference: Supabase client integration in `lib/realtime/client.tsx`
+- Main focus: Feature-disable UX consistency + server-side feature gate enforcement for admin surfaces
 
 ## This Session - Completed Work
-1. Added shared request context helper in `lib/api-request-context.ts`:
-   - `resolveOptionalAuth(headers)`
-   - `resolveTenantId(headers, auth?)`
-2. Hardened `GET /api/events/[eventId]/stats`:
-   - tenant resolution priority aligned to auth/session first
-   - query execution changed to partial-failure tolerant path
-   - optional `warnings` payload added (non-breaking)
-3. Hardened Lucky Draw read endpoints:
-   - `.../lucky-draw/config`
-   - `.../lucky-draw/entries`
-   - `.../lucky-draw/history`
-   - `.../lucky-draw/participants`
-   - recoverable DB drift handling includes codes `42P01` and `42703`
-   - safe empty payload/message behavior for recoverable failures
-4. Updated admin UI behavior:
-   - `components/events/event-stats.tsx` shows soft warning notice on `warnings`
-   - `components/lucky-draw/admin/LuckyDrawAdminTab.tsx` clears stale global error on successful reads
-5. Verification:
-   - `npm run build` completed successfully on 2026-02-19.
+1. Implemented admin deep-link contract in `app/organizer/events/[eventId]/admin/page.tsx`:
+   - supports `tab=settings&subTab=features&feature=<key>`
+   - syncs `tab` query param with active tab state
+2. Added settings feature highlight/scroll support:
+   - `components/settings/SettingsAdminTab.tsx`
+   - `components/settings/tabs/FeaturesTab.tsx`
+   - `components/settings/types.ts`
+3. Added shared disabled UI callout:
+   - `components/features/FeatureDisabledNotice.tsx`
+4. Wired disabled notice with CTA deep links in admin tabs:
+   - `components/attendance/AttendanceAdminTab.tsx`
+   - `components/lucky-draw/admin/LuckyDrawAdminTab.tsx`
+   - `components/photo-challenge/admin-tab.tsx`
+   - attendance standalone admin page route also linked back to settings features tab
+5. Added reusable feature gate helper:
+   - `lib/event-feature-gate.ts`
+   - standardized disabled response: status `400`, code `FEATURE_DISABLED`
+6. Enforced feature gates server-side across scoped APIs:
+   - Attendance routes (`attendance`, `manual`, `stats`, `export`, `my`)
+   - Lucky Draw routes (`route`, `config`, `entries`, `participants`, `history`, `redraw`)
+   - Photo Challenge routes (`route`, `progress`, `progress/all`, `claim`, `verify`, `revoke`)
+7. Validation completed:
+   - `npm run typecheck` passed
+   - `npm run build` passed
+   - `npm test -- --runInBand` passed
+8. Delivery:
+   - committed and pushed to `origin/main`
+   - commit: `3735bb3` (`Add feature-disabled UX deep links and API feature gates`)
 
 ## Known Drift Notes
 - `docs/README.md` mentions `npm run dev:all`; `package.json` currently does not define it.
 - Legacy docs may mention Socket.io while active realtime client patterns are Supabase-based.
 
 ## Active Follow-ups
-1. Runtime check on organizer event admin pages with live DB data.
-2. Confirm warning-path UX on partial query failure scenarios.
-3. Optionally extend same hardening pattern to attendance/photo-challenge read routes.
+1. Add targeted tests for `FEATURE_DISABLED` responses on attendance/lucky-draw/photo-challenge routes.
+2. Add UI tests that assert disabled tabs do not fetch data and always show settings CTA.
+3. Optional UX polish: autofocus highlighted feature row when deep-linked into Settings > Features.
 
 ## Current Risks / Constraints
-- Live DB runtime validation was not available in this environment during planning (connection refused), so current confidence is compile- and code-path-verified.
+- Feature behavior is compile/build/runtime-path verified, but dedicated feature-toggle regression tests are still missing.
 
 ## Restart Recap
-If Rover restarts: reload `master-memory.md`, confirm latest admin-fetch stabilization is in place, then continue from runtime verification on organizer admin tabs.
+If Rover restarts: reload `master-memory.md`, keep `3735bb3` as latest feature-disable baseline, and continue from targeted API/UI test coverage for toggle enforcement.

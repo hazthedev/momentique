@@ -77,3 +77,34 @@ Optional conversation archive for milestone continuity.
 ### Next Session Starting Point
 - Run live organizer page verification for Overview/Lucky Draw tabs.
 - Decide whether to extend the same hardening pattern to attendance/photo-challenge read routes.
+
+---
+
+## Entry 004 - 2026-02-22
+### Session Summary
+- Investigated and fixed feature-toggle logic gap where disabled features could still be used in admin flows.
+- Implemented unified disabled UX with clear CTA:
+  - "Click here to enable it" deep-linking to `Settings > Features`.
+- Enforced matching server-side gates across Attendance, Lucky Draw, and Photo Challenge APIs.
+
+### Decisions Locked In
+1. Feature tabs remain visible when disabled, but render a clear disabled notice instead of partial functionality.
+2. Disabled-feature API contract is standardized:
+   - HTTP `400`
+   - payload includes `code: FEATURE_DISABLED` and `feature`.
+3. Feature toggles are treated as explicit-false gates (`!== false` remains enabled-default behavior).
+
+### Context Updates
+- Added helper: `lib/event-feature-gate.ts`.
+- Added shared UI component: `components/features/FeatureDisabledNotice.tsx`.
+- Added admin deep-link + feature highlight support in settings tab.
+- Commit delivered and pushed: `3735bb3` on `main`.
+
+### Validation Notes
+- `npm run typecheck` passed.
+- `npm run build` passed.
+- `npm test -- --runInBand` passed.
+
+### Next Session Starting Point
+- Add targeted API/UI regression tests specifically for disabled-feature flows.
+- Consider small UX enhancement for focus state when highlighted setting row loads.
